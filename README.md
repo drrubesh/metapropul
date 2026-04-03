@@ -1,16 +1,17 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# propulmeta
+# metapropul
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
-The goal of propulmeta is to …
+The goal of metapropul is to …
 
 ## Installation
 
-You can install the development version of propulmeta like so:
+You can install the development version of metapropul like so:
 
 ``` r
 # FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
@@ -21,7 +22,7 @@ You can install the development version of propulmeta like so:
 This is a basic example which shows you how to solve a common problem:
 
 ``` r
-library(propulmeta)
+
 ## basic example code
 ```
 
@@ -44,7 +45,7 @@ up-to-date. `devtools::build_readme()` is handy for this.
 
 You can also embed plots, for example:
 
-<img src="man/figures/README-pressure-1.png" width="100%" />
+<img src="man/figures/README-pressure-1.png" alt="" width="100%" />
 
 In that case, don’t forget to commit and push the resulting figure
 files, so they display on GitHub and CRAN.

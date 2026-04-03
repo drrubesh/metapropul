@@ -13,16 +13,16 @@ knitr::opts_chunk$set(
 )
 ```
 
-# propulmeta
+# metapropul
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of propulmeta is to ...
+The goal of metapropul is to ...
 
 ## Installation
 
-You can install the development version of propulmeta like so:
+You can install the development version of metapropul like so:
 
 ``` r
 # FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
@@ -33,7 +33,6 @@ You can install the development version of propulmeta like so:
 This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
-library(propulmeta)
 ## basic example code
 ```
 

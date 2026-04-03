@@ -1,120 +1,301 @@
-#' Generate Meta-Analysis Summary Table
+#' Summary table for meta-analysis results
 #'
-#' Dispatches to the appropriate internal function to generate a summary table
-#' depending on the class of the meta-analysis object.
+#' Produces a publication-ready table from a \code{meta_ratio},
+#' \code{meta_mean}, or \code{meta_prop} object. Includes study-level
+#' estimates, a pooled row, and a footnote explaining I\eqn{^2}.
 #'
-#' @param meta_result A meta-analysis object of class `meta_ratio`, `meta_mean`, or `meta_prop`.
+#' @param meta_result A \code{meta_ratio}, \code{meta_mean}, or
+#'   \code{meta_prop} object.
+#' @param title Optional character string for the table title. If \code{NULL}
+#'   (default), an auto-constructed title is used.
+#' @param save_as One of \code{"viewer"} (default), \code{"docx"} (Word), or
+#'   \code{"pdf"}.
+#' @param filename Optional file path. If \code{NULL}, a timestamped file is
+#'   created in \code{tempdir()}.
 #'
-#' @return A `gt` table summarizing study-level and pooled results.
+#' @return A \code{gt} table (invisibly when saving to file).
+#'
+#' @examples
+#' \donttest{
+#' data(dat_bcg, package = "metapropul")
+#' result <- meta_prop(
+#'   data = dat_bcg, event = "tpos", n = "npos",
+#'   studylab = "author"
+#' )
+#' table_meta(result)
+#' }
+#'
+#' @importFrom dplyr bind_rows
+#' @importFrom tibble tibble
 #' @export
-#'
-table_meta <- function(meta_result) {
-  stopifnot(inherits(meta_result, c("meta_ratio", "meta_mean", "meta_prop")))
+table_meta <- function(meta_result,
+                       title = NULL,
+                       save_as = c("viewer", "docx", "pdf"),
+                       filename = NULL) {
+  save_as <- match.arg(save_as)
 
-  if (inherits(meta_result, "meta_ratio")) {
-    return(table_meta_ratio(meta_result))
+  if (!inherits(meta_result, c("meta_ratio", "meta_mean", "meta_prop"))) {
+    stop(
+      "Only supports meta_ratio, meta_mean, or meta_prop objects.",
+      call. = FALSE
+    )
+  }
+
+  gt_tbl <- if (inherits(meta_result, "meta_ratio")) {
+    .table_meta_ratio(meta_result, title)
   } else if (inherits(meta_result, "meta_mean")) {
-    return(table_meta_mean(meta_result))
-  } else if (inherits(meta_result, "meta_prop")) {
-    return(table_meta_prop(meta_result))
+    .table_meta_mean(meta_result, title)
+  } else {
+    .table_meta_prop(meta_result, title)
+  }
+
+  if (identical(save_as, "viewer")) {
+    print(gt_tbl)
+    return(invisible(gt_tbl))
+  }
+
+  ext <- switch(save_as,
+    docx = "docx",
+    pdf = "pdf"
+  )
+
+  if (is.null(filename)) {
+    filename <- file.path(
+      tempdir(),
+      paste0("table_meta_", format(Sys.time(), "%Y%m%d%H%M%S"), ".", ext)
+    )
+  }
+
+  gt::gtsave(gt_tbl, filename = filename)
+  message("Table saved to: ", normalizePath(filename, mustWork = FALSE))
+  invisible(gt_tbl)
+}
+
+# -- Shared helpers ------------------------------------------------------------
+
+.i2_footnote <- paste0(
+  "I\u00b2 = proportion of total observed variability attributable to ",
+  "between-study heterogeneity. Not a significance test; magnitude depends ",
+  "on study precision and number of studies."
+)
+
+.auto_title <- function(measure, k) {
+  measure_str <- switch(measure,
+    OR = "Odds Ratio",
+    RR = "Risk Ratio",
+    HR = "Hazard Ratio",
+    MD = "Mean Difference",
+    SMD = "Standardised Mean Difference",
+    Proportion = "Proportion",
+    measure
+  )
+
+  sprintf(
+    "Meta-analysis \u2014 %s (k\u00a0=\u00a0%d stud%s)",
+    measure_str,
+    k,
+    if (k == 1L) "y" else "ies"
+  )
+}
+
+.pooled_vals <- function(m, model) {
+  if (identical(model, "random")) {
+    list(est = m$TE.random, lo = m$lower.random, hi = m$upper.random)
+  } else {
+    list(est = m$TE.common, lo = m$lower.common, hi = m$upper.common)
   }
 }
 
-#' @title Internal: Meta-analysis of Ratios Table
-#' @description Generates a summary table for meta-analysis objects of class `meta_ratio`.
-#' @param meta_result A `meta_ratio` object created by `meta_ratio()`.
-#' @return A `gt` table with study-level ORs and a pooled estimate.
+# -- .table_meta_ratio ---------------------------------------------------------
 #' @noRd
-table_meta_ratio <- function(meta_result) {
-  df <- meta_result$table %>%
-    dplyr::mutate(
-      `Events` = paste0(meta_result$meta$event.e, "/", meta_result$meta$n.e,
-                        " vs ", meta_result$meta$event.c, "/", meta_result$meta$n.c),
-      `Weight (%)` = round(.data$weight, 1),
-      `Odds Ratio [95% CI]` = paste0(round(exp(.data$TE), 2), " [",
-                                     round(exp(.data$lower), 2), " – ",
-                                     round(exp(.data$upper), 2), "]")
-    ) %>%
-    dplyr::select(.data$Study, .data$Events, `Weight (%)`, `Odds Ratio [95% CI]`)
+.table_meta_ratio <- function(meta_result, title = NULL) {
+  m <- meta_result$meta
+  tbl <- meta_result$table
+  k <- nrow(tbl)
 
-  summary_row <- tibble::tibble(
-    Study = "Pooled",
-    Events = "",
-    `Weight (%)` = NA_real_,
-    `Odds Ratio [95% CI]` = paste0(
-      round(exp(meta_result$meta$TE.random), 2), " [",
-      round(exp(meta_result$meta$lower.random), 2), " – ",
-      round(exp(meta_result$meta$upper.random), 2), "]",
-      " (I² = ", round(meta_result$meta$I2, 1), "%)"
+  col_label <- switch(meta_result$measure,
+    OR = "Odds Ratio [95% CI]",
+    RR = "Risk Ratio [95% CI]",
+    HR = "Hazard Ratio [95% CI]",
+    "Effect [95% CI]"
+  )
+
+  df <- tibble::tibble(
+    Study = tbl$Study,
+    Events = if (!is.null(m$event.e)) {
+      paste0(m$event.e, "/", m$n.e, " vs ", m$event.c, "/", m$n.c)
+    } else {
+      NA_character_
+    },
+    `Weight (%)` = round(tbl$weight, 1),
+    `Estimate [95% CI]` = paste0(
+      round(tbl$Estimate, 2), " [",
+      round(tbl$lower, 2), " \u2013 ",
+      round(tbl$upper, 2), "]"
     )
   )
 
-  dplyr::bind_rows(df, summary_row) %>% gt::gt()
+  pv <- .pooled_vals(m, meta_result$model)
+
+  pooled_row <- tibble::tibble(
+    Study = "Pooled",
+    Events = "",
+    `Weight (%)` = NA_real_,
+    `Estimate [95% CI]` = paste0(
+      round(exp(pv$est), 2), " [",
+      round(exp(pv$lo), 2), " \u2013 ",
+      round(exp(pv$hi), 2), "]",
+      "  (I\u00b2\u00a0=\u00a0", .format_i2(m$I2), "%)"
+    )
+  )
+
+  tbl_title <- if (!is.null(title)) {
+    title
+  } else {
+    .auto_title(meta_result$measure, k)
+  }
+
+  dplyr::bind_rows(df, pooled_row) |>
+    gt::gt() |>
+    gt::tab_header(title = tbl_title) |>
+    gt::cols_label(`Estimate [95% CI]` = col_label) |>
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(rows = Study == "Pooled")
+    ) |>
+    gt::tab_footnote(
+      footnote = .i2_footnote,
+      locations = gt::cells_body(
+        columns = `Estimate [95% CI]`,
+        rows = Study == "Pooled"
+      )
+    )
 }
 
-#' @title Internal: Meta-analysis of Means Table
-#' @description Generates a summary table for meta-analysis objects of class `meta_mean`.
-#' @param meta_result A `meta_mean` object created by `meta_mean()`.
-#' @return A `gt` table with study-level mean differences and a pooled estimate.
+# -- .table_meta_mean ----------------------------------------------------------
 #' @noRd
-table_meta_mean <- function(meta_result) {
-  df <- meta_result$table %>%
-    dplyr::mutate(
-      `Mean (SD)` = paste0(meta_result$meta$mean.e, " (", meta_result$meta$sd.e, ") vs ",
-                           meta_result$meta$mean.c, " (", meta_result$meta$sd.c, ")"),
-      Total = meta_result$meta$n.e + meta_result$meta$n.c,
-      `Weight (%)` = round(.data$weight, 1),
-      `Mean Difference [95% CI]` = paste0(round(.data$TE, 2), " [",
-                                          round(.data$lower, 2), " – ",
-                                          round(.data$upper, 2), "]")
-    ) %>%
-    dplyr::select(.data$Study, `Mean (SD)`, .data$Total, `Weight (%)`, `Mean Difference [95% CI]`)
+.table_meta_mean <- function(meta_result, title = NULL) {
+  m <- meta_result$meta
+  tbl <- meta_result$table
+  k <- nrow(tbl)
 
-  summary_row <- tibble::tibble(
+  col_label <- if (identical(meta_result$measure, "SMD")) {
+    "SMD [95% CI]"
+  } else {
+    "Mean Difference [95% CI]"
+  }
+
+  has_arms <- !is.null(m$mean.e) && !is.null(m$sd.e)
+  has_n <- !is.null(m$n.e) && !is.null(m$n.c)
+
+  df <- tibble::tibble(
+    Study = tbl$Study,
+    `Mean (SD)` = if (has_arms) {
+      paste0(
+        round(m$mean.e, 2), " (", round(m$sd.e, 2), ") vs ",
+        round(m$mean.c, 2), " (", round(m$sd.c, 2), ")"
+      )
+    } else {
+      NA_character_
+    },
+    Total = if (has_n) m$n.e + m$n.c else NA_real_,
+    `Weight (%)` = round(tbl$weight, 1),
+    `Estimate [95% CI]` = paste0(
+      round(tbl$Estimate, 2), " [",
+      round(tbl$lower, 2), " \u2013 ",
+      round(tbl$upper, 2), "]"
+    )
+  )
+
+  pv <- .pooled_vals(m, meta_result$model)
+
+  pooled_row <- tibble::tibble(
     Study = "Pooled",
     `Mean (SD)` = "",
     Total = NA_real_,
     `Weight (%)` = NA_real_,
-    `Mean Difference [95% CI]` = paste0(
-      round(meta_result$meta$TE.random, 2), " [",
-      round(meta_result$meta$lower.random, 2), " – ",
-      round(meta_result$meta$upper.random, 2), "]",
-      " (I² = ", round(meta_result$meta$I2, 1), "%)"
+    `Estimate [95% CI]` = paste0(
+      round(pv$est, 2), " [",
+      round(pv$lo, 2), " \u2013 ",
+      round(pv$hi, 2), "]",
+      "  (I\u00b2\u00a0=\u00a0", .format_i2(m$I2), "%)"
     )
   )
 
-  dplyr::bind_rows(df, summary_row) %>% gt::gt()
+  tbl_title <- if (!is.null(title)) {
+    title
+  } else {
+    .auto_title(meta_result$measure, k)
+  }
+
+  dplyr::bind_rows(df, pooled_row) |>
+    gt::gt() |>
+    gt::tab_header(title = tbl_title) |>
+    gt::cols_label(`Estimate [95% CI]` = col_label) |>
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(rows = Study == "Pooled")
+    ) |>
+    gt::tab_footnote(
+      footnote = .i2_footnote,
+      locations = gt::cells_body(
+        columns = `Estimate [95% CI]`,
+        rows = Study == "Pooled"
+      )
+    )
 }
 
-#' @title Internal: Meta-analysis of Proportions Table
-#' @description Generates a summary table for meta-analysis objects of class `meta_prop`.
-#' @param meta_result A `meta_prop` object created by `meta_prop()`.
-#' @return A `gt` table with study-level proportions and a pooled estimate.
+# -- .table_meta_prop ----------------------------------------------------------
 #' @noRd
-table_meta_prop <- function(meta_result) {
-  df <- meta_result$table %>%
-    dplyr::mutate(
-      Events = meta_result$meta$event,
-      Total = meta_result$meta$n,
-      `Weight (%)` = round(.data$weight, 1),
-      `Proportion [95% CI]` = paste0(round(.data$Proportion, 2), "% [",
-                                     round(.data$lower, 2), " – ",
-                                     round(.data$upper, 2), "]")
-    ) %>%
-    dplyr::select(.data$Study, .data$Events, .data$Total, `Weight (%)`, `Proportion [95% CI]`)
+.table_meta_prop <- function(meta_result, title = NULL) {
+  m <- meta_result$meta
+  tbl <- meta_result$table
+  s <- meta_result$meta.summary
+  k <- nrow(tbl)
 
-  summary_row <- tibble::tibble(
-    Study = "Pooled",
-    Events = NA,
-    Total = NA,
-    `Weight (%)` = NA_real_,
+  df <- tibble::tibble(
+    Study = tbl$Study,
+    Events = m$event,
+    Total = m$n,
+    `Weight (%)` = round(tbl$weight, 1),
     `Proportion [95% CI]` = paste0(
-      round(meta_result$meta.summary$Estimate * 100, 2), "% [",
-      round(meta_result$meta.summary$lower * 100, 2), " – ",
-      round(meta_result$meta.summary$upper * 100, 2), "]",
-      " (I² = ", round(meta_result$meta.summary$I2 * 100, 1), "%)"
+      round(tbl$Proportion, 1), "% [",
+      round(tbl$lower, 1), " \u2013 ",
+      round(tbl$upper, 1), "]"
     )
   )
 
-  dplyr::bind_rows(df, summary_row) %>% gt::gt()
+  pooled_row <- tibble::tibble(
+    Study = "Pooled",
+    Events = NA_real_,
+    Total = NA_real_,
+    `Weight (%)` = NA_real_,
+    `Proportion [95% CI]` = paste0(
+      round(s$Estimate, 1), "% [",
+      round(s$lower, 1), " \u2013 ",
+      round(s$upper, 1), "]",
+      "  (I\u00b2\u00a0=\u00a0", .format_i2(s$I2), "%)"
+    )
+  )
+
+  tbl_title <- if (!is.null(title)) {
+    title
+  } else {
+    .auto_title("Proportion", k)
+  }
+
+  dplyr::bind_rows(df, pooled_row) |>
+    gt::gt() |>
+    gt::tab_header(title = tbl_title) |>
+    gt::tab_style(
+      style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(rows = Study == "Pooled")
+    ) |>
+    gt::tab_footnote(
+      footnote = .i2_footnote,
+      locations = gt::cells_body(
+        columns = `Proportion [95% CI]`,
+        rows = Study == "Pooled"
+      )
+    )
 }

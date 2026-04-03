@@ -1,3 +1,3 @@
-# propulmeta 0.1.0
+# metapropul 0.1.0
 
 * Initial CRAN submission.

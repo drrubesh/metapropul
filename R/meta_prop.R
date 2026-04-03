@@ -1,19 +1,45 @@
-#' Meta-analysis of Proportions (Logit with Influence Analysis)
+#' Meta-analysis of proportions
 #'
-#' Performs a meta-analysis of proportions using logit transformation via metaprop().
-#' Includes influence analysis and formatted outputs in percentages.
+#' Performs a meta-analysis of proportions using logit (\code{"PLOGIT"}) or
+#' Freeman-Tukey double arcsine (\code{"PFT"}) transformation via
+#' \code{meta::metaprop()}. Results are expressed as percentages on the
+#' back-transformed scale. Prediction intervals, subgroup analysis, and
+#' leave-one-out influence analysis are included by default.
 #'
-#' @param data Dataframe with proportion data.
-#' @param event Column name for event count.
-#' @param n Column name for total count.
+#' @param data A data frame with proportion data.
+#' @param event Column name for event counts.
+#' @param n Column name for total counts.
 #' @param studylab Column name for study labels (optional).
-#' @param subgroup Column name for subgroup analysis (optional).
-#' @param model "random" or "fixed" (default = "random").
-#' @param tau_method Tau^2 method (default = "REML").
-#' @param ci_method CI method for random-effects (default = "HK").
-#' @param verbose Logical; if TRUE, prints progress messages (default is FALSE).
+#' @param subgroup Column name for subgroup variable (optional).
+#' @param model \code{"random"} (default) or \code{"fixed"}.
+#' @param sm Summary measure: \code{"PLOGIT"} (logit, default) or
+#'   \code{"PFT"} (Freeman-Tukey double arcsine -- preferred when proportions
+#'   are near 0 or 1). Note that \code{"PFT"} results are back-transformed
+#'   using \code{meta}'s built-in method; displayed values are always on the
+#'   proportion percentage scale.
+#' @param tau_method Tau\eqn{^2} estimator. Default \code{"REML"}.
+#' @param ci_method CI method for the pooled estimate.
+#'   \code{"HK"} (default), \code{"classic"}, or \code{"KR"}.
+#' @param prediction_interval Logical. Compute a prediction interval (default
+#'   \code{TRUE}).
+#' @param verbose Logical. Print progress messages (default \code{FALSE}).
 #'
-#' @return A list with meta object, tidy table, subgroup summary, influence analysis (all in %), and metadata.
+#' @return An object of class \code{"meta_prop"}.
+#'
+#' @examples
+#' \donttest{
+#' data(dat_bcg, package = "metapropul")
+#' result <- meta_prop(
+#'   data     = dat_bcg,
+#'   event    = "tpos",
+#'   n        = "npos",
+#'   studylab = "author"
+#' )
+#' summary(result)
+#' }
+#'
+#' @importFrom stats plogis
+#' @importFrom tibble tibble
 #' @export
 meta_prop <- function(data,
                       event,
@@ -21,143 +47,213 @@ meta_prop <- function(data,
                       studylab = NULL,
                       subgroup = NULL,
                       model = "random",
+                      sm = "PLOGIT",
                       tau_method = "REML",
                       ci_method = "HK",
+                      prediction_interval = TRUE,
                       verbose = FALSE) {
-
   if (verbose) message("Starting meta-analysis of proportions...")
 
   if (!requireNamespace("meta", quietly = TRUE)) {
-    stop("The 'meta' package is required but not installed. Please install it using install.packages('meta')", call. = FALSE)
+    stop("The 'meta' package is required. Install with install.packages('meta').",
+      call. = FALSE
+    )
   }
 
-  # Internal helper: inverse logit
-  inv_logit <- function(x) {
-    suppressWarnings(x <- as.numeric(x))
-    exp(x) / (1 + exp(x))
-  }
-
-  # Labels
-  study_labels <- if (!is.null(studylab)) make.unique(data[[studylab]]) else paste0("Study_", seq_len(nrow(data)))
-  subgroup_var <- if (!is.null(subgroup)) data[[subgroup]] else NULL
-
-  # Meta-analysis
-  meta_result <- meta::metaprop(
-    event = data[[event]],
-    n = data[[n]],
-    studlab = study_labels,
-    sm = "PLOGIT",
-    method = "Inverse",
-    method.tau = tau_method,
-    method.random.ci = ci_method,
-    random = (model == "random"),
-    common = (model == "fixed"),
-    incr = 0.5, # ensure continuity correction
-    subgroup = subgroup_var,
-    backtransf = TRUE
+  sm <- match.arg(sm, c("PLOGIT", "PFT"))
+  model <- match.arg(model, c("random", "fixed"))
+  ci_method <- match.arg(ci_method, c("HK", "classic", "KR"))
+  tau_method <- match.arg(
+    tau_method,
+    c("REML", "PM", "DL", "ML", "HS", "SJ", "HE", "EB")
   )
 
-  # Correctly assign based on model
-  if (model == "random") {
-    weights <- meta_result$w.random
-    TE_val <- meta_result$TE.random
-    lower_val <- meta_result$lower.random
-    upper_val <- meta_result$upper.random
-  } else {
-    weights <- meta_result$w.fixed
-    TE_val <- meta_result$TE.common
-    lower_val <- meta_result$lower.common
-    upper_val <- meta_result$upper.common
+  # -- Validation ---------------------------------------------------------------
+  if (!inherits(data, "data.frame")) {
+    stop("'data' must be a data frame.", call. = FALSE)
+  }
+  if (nrow(data) < 2L) {
+    stop("'data' must contain at least 2 studies.", call. = FALSE)
+  }
+  for (col in c(event, n)) {
+    if (!col %in% names(data)) {
+      stop(sprintf("Column '%s' not found in data.", col), call. = FALSE)
+    }
+    if (!is.numeric(data[[col]])) {
+      stop(sprintf("Column '%s' must be numeric.", col), call. = FALSE)
+    }
+  }
+  if (any(data[[n]] <= 0, na.rm = TRUE)) {
+    stop("Sample sizes ('n') must be positive.", call. = FALSE)
+  }
+  if (any(data[[event]] > data[[n]], na.rm = TRUE)) {
+    stop("Event counts cannot exceed sample sizes.", call. = FALSE)
+  }
+  if (any(data[[event]] < 0, na.rm = TRUE)) {
+    stop("Event counts cannot be negative.", call. = FALSE)
   }
 
-  # Tidy study-level table
+  # -- Labels & subgroup --------------------------------------------------------
+  if (!is.null(studylab)) {
+    if (!studylab %in% names(data)) {
+      stop(sprintf("Column '%s' not found in data.", studylab), call. = FALSE)
+    }
+    study_labels <- make.unique(as.character(data[[studylab]]))
+  } else {
+    study_labels <- paste0("Study_", seq_len(nrow(data)))
+  }
+
+  if (!is.null(subgroup)) {
+    if (!subgroup %in% names(data)) {
+      stop(sprintf("Column '%s' not found in data.", subgroup), call. = FALSE)
+    }
+    subgroup_var <- data[[subgroup]]
+  } else {
+    subgroup_var <- NULL
+  }
+
+  # -- Fit model ----------------------------------------------------------------
+  meta_result <- meta::metaprop(
+    event            = data[[event]],
+    n                = data[[n]],
+    studlab          = study_labels,
+    sm               = sm,
+    method           = "Inverse",
+    method.tau       = tau_method,
+    method.random.ci = ci_method,
+    random           = (model == "random"),
+    common           = (model == "fixed"),
+    incr             = 0.5,
+    prediction       = prediction_interval,
+    subgroup         = subgroup_var,
+    backtransf       = TRUE
+  )
+
+  # -- Back-transform helper ----------------------------------------------------
+  # meta stores TE on the transformed scale (logit for PLOGIT, arcsine for PFT).
+  # With backtransf = TRUE the meta object already carries back-transformed
+  # values in $TE.predict etc., but for study-level TE we must transform manually.
+  # For PFT: meta uses meta::backtransf.prop() internally. We replicate the
+  # correct inverse: asin(sqrt(p)) -> p = sin^2(TE). For PLOGIT: plogis().
+  .bt <- if (sm == "PLOGIT") {
+    function(x) stats::plogis(x) * 100
+  } else {
+    # PFT inverse: sin^2(x), clamped to [0, 1]
+    function(x) pmin(pmax(sin(x)^2, 0), 1) * 100
+  }
+
+  # -- Study-level table --------------------------------------------------------
+  # Honour prediction_interval=FALSE: null out predict slots if not requested.
+  if (!prediction_interval) {
+    meta_result$lower.predict <- NULL
+    meta_result$upper.predict <- NULL
+  }
+  # Use per-study TE/lower/upper vectors (not pooled scalars).
   tidy_tbl <- tibble::tibble(
     Study = meta_result$studlab,
-    Proportion = round(inv_logit(TE_val) * 100, 1),
-    lower = round(inv_logit(lower_val) * 100, 1),
-    upper = round(inv_logit(upper_val) * 100, 1),
-    weight = round(weights / sum(weights) * 100, 1),
+    Proportion = round(.bt(meta_result$TE), 1),
+    lower = round(.bt(meta_result$lower), 1),
+    upper = round(.bt(meta_result$upper), 1),
+    weight = round(if (model == "random") {
+      meta_result$w.random / sum(meta_result$w.random) * 100
+    } else {
+      meta_result$w.fixed / sum(meta_result$w.fixed) * 100
+    }, 1),
     subgroup = if (!is.null(subgroup)) subgroup_var else NA
   )
 
-  # Subgroup Summary
+  # -- Subgroup summary ---------------------------------------------------------
   meta.subgroup.summary <- NULL
-  if (!is.null(subgroup)) {
-    meta.subgroup.summary <- tidy_tbl %>%
-      dplyr::group_by(.data$subgroup) %>%
-      dplyr::group_split() %>%
-      purrr::map_dfr(function(subgroup_data) {
-        subgroup_name <- unique(subgroup_data$subgroup)
-        idx <- which(tidy_tbl$subgroup == subgroup_name)
-
-        event_sub <- data[[event]][idx]
-        n_sub <- data[[n]][idx]
-        studylab_sub <- study_labels[idx]
-
-        meta_sub <- meta::metaprop(
-          event = event_sub,
-          n = n_sub,
-          studlab = studylab_sub,
-          method = "Inverse",
-          method.tau = tau_method,
-          sm = "PLOGIT",
-          backtransf = TRUE
-        )
-
-        tibble::tibble(
-          Subgroup = subgroup_name,
-          Estimate = round(inv_logit(meta_sub$TE.random) * 100, 1),
-          lower = round(inv_logit(meta_sub$lower.random) * 100, 1),
-          upper = round(inv_logit(meta_sub$upper.random) * 100, 1),
-          Tau2 = round(meta_sub$tau2, 4),
-          I2 = round(meta_sub$I2, 1)
-        )
-      })
+  if (!is.null(subgroup) && !is.null(meta_result$subgroup.levels)) {
+    if (model == "random") {
+      sg_est <- meta_result$TE.random.w
+      sg_lower <- meta_result$lower.random.w
+      sg_upper <- meta_result$upper.random.w
+    } else {
+      sg_est <- meta_result$TE.common.w
+      sg_lower <- meta_result$lower.common.w
+      sg_upper <- meta_result$upper.common.w
+    }
+    meta.subgroup.summary <- tibble::tibble(
+      Subgroup = meta_result$subgroup.levels,
+      Estimate = round(.bt(sg_est), 1),
+      lower    = round(.bt(sg_lower), 1),
+      upper    = round(.bt(sg_upper), 1),
+      Tau2     = round(meta_result$tau2.w, 4),
+      I2       = round(meta_result$I2.w * 100, 1)
+    )
   }
 
-  # Pooled summary (always random for now; could be made smarter if needed)
+  # -- Pooled summary -----------------------------------------------------------
+  if (model == "random") {
+    pooled_est <- meta_result$TE.random
+    pooled_lower <- meta_result$lower.random
+    pooled_upper <- meta_result$upper.random
+    pooled_pi_lo <- if (prediction_interval) meta_result$lower.predict else NULL
+    pooled_pi_hi <- if (prediction_interval) meta_result$upper.predict else NULL
+  } else {
+    pooled_est <- meta_result$TE.common
+    pooled_lower <- meta_result$lower.common
+    pooled_upper <- meta_result$upper.common
+    pooled_pi_lo <- NULL
+    pooled_pi_hi <- NULL
+  }
+
   pooled <- tibble::tibble(
-    Estimate = round(inv_logit(meta_result$TE.random) * 100, 1),
-    lower = round(inv_logit(meta_result$lower.random) * 100, 1),
-    upper = round(inv_logit(meta_result$upper.random) * 100, 1),
-    pred.lower = if (!is.null(meta_result$lower.predict)) round(inv_logit(meta_result$lower.predict) * 100, 1) else NA,
-    pred.upper = if (!is.null(meta_result$upper.predict)) round(inv_logit(meta_result$upper.predict) * 100, 1) else NA,
+    Estimate = round(.bt(pooled_est), 1),
+    lower = round(.bt(pooled_lower), 1),
+    upper = round(.bt(pooled_upper), 1),
+    pred.lower = if (!is.null(pooled_pi_lo) && !is.null(pooled_pi_lo) &&
+      length(pooled_pi_lo) > 0 && !is.na(pooled_pi_lo)) {
+      round(.bt(pooled_pi_lo), 1)
+    } else {
+      NA_real_
+    },
+    pred.upper = if (!is.null(pooled_pi_hi) && !is.null(pooled_pi_hi) &&
+      length(pooled_pi_hi) > 0 && !is.na(pooled_pi_hi)) {
+      round(.bt(pooled_pi_hi), 1)
+    } else {
+      NA_real_
+    },
+    # I2 from meta is 0-1 scale; store as-is, display code multiplies by 100
     I2 = meta_result$I2,
     Tau2 = meta_result$tau2
   )
 
-  # Influence analysis
-  influence_obj <- tryCatch(meta::metainf(meta_result, comb.random = TRUE, comb.fixed = FALSE),
-                            error = function(e) NULL)
+  # -- Influence ----------------------------------------------------------------
+  inf_random <- model == "random"
+  inf_common <- model == "fixed"
+  influence_obj <- tryCatch(
+    meta::metainf(meta_result, random = inf_random, common = inf_common),
+    error = function(e) NULL
+  )
 
   influence_data <- if (!is.null(influence_obj)) {
     keep_rows <- influence_obj$studlab != " " & !is.na(influence_obj$TE)
-
-
     tibble::tibble(
-      Study = influence_obj$studlab[keep_rows],
-      Proportion = round(plogis(influence_obj$TE[keep_rows]) * 100, 1),
-      lower = round(plogis(influence_obj$lower[keep_rows]) * 100, 1),
-      upper = round(plogis(influence_obj$upper[keep_rows]) * 100, 1)
+      Study      = influence_obj$studlab[keep_rows],
+      Proportion = round(.bt(influence_obj$TE[keep_rows]), 1),
+      lower      = round(.bt(influence_obj$lower[keep_rows]), 1),
+      upper      = round(.bt(influence_obj$upper[keep_rows]), 1)
     )
   } else {
     NULL
   }
 
-  # Return structured output
   structure(
     list(
-      meta = meta_result,
-      table = tidy_tbl,
-      meta.summary = pooled,
+      meta                  = meta_result,
+      table                 = tidy_tbl,
+      meta.summary          = pooled,
       meta.subgroup.summary = meta.subgroup.summary,
-      influence.analysis = influence_data,
-      influence.meta = influence_obj,
-      model = model,
-      measure = "Proportion",
-      tau_method = tau_method,
-      ci_method = ci_method,
-      subgroup = !is.null(subgroup)
+      influence.analysis    = influence_data,
+      influence.meta        = influence_obj,
+      model                 = model,
+      measure               = "Proportion",
+      sm                    = sm,
+      tau_method            = tau_method,
+      ci_method             = ci_method,
+      subgroup              = !is.null(subgroup)
     ),
     class = "meta_prop"
   )

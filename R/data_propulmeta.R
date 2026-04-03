@@ -97,7 +97,7 @@
 #' This dataset contains data from randomized trials evaluating the effect of caffeine
 #' ingestion on endurance performance, measured as time to exhaustion or distance covered.
 #'
-#'#' @format A data frame with 8 rows and 12 variables:
+#' #' @format A data frame with 8 rows and 12 variables:
 #' \describe{
 #'   \item{study}{Study label}
 #'   \item{year}{Year of publication}

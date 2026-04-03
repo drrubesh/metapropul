@@ -1,0 +1,133 @@
+--- 
+title: "metapropul"
+subtitle: "A Practical Toolkit for Meta-Analysis in Systematic Reviews"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [references.bib]
+biblio-style: apalike
+link-citations: yes
+description: |
+  metapropul provides a unified, publication-ready interface for
+  systematic reviewers conducting meta-analysis of proportions,
+  risk ratios, odds ratios, hazard ratios, and mean differences.
+cover-image: images/logo.png
+github-repo: drrubesh/metapropul
+url: 'https://drrubesh.github.io/metapropul/'
+---
+
+# Welcome {-}
+
+```{r, echo=FALSE, eval=TRUE, out.width="220px"}
+# knitr::include_graphics("images/logo.png")
+```
+
+<div style="background: linear-gradient(135deg, #1a3f6f 0%, #2e5d9e 60%, #4a7ec4 100%); color: white; border-radius: 12px; padding: 32px 36px; margin-bottom: 2em;">
+<h2 style="color:white; border:none; margin-top:0; font-size:1.8rem;">Welcome to metapropul</h2>
+<p style="font-size:1.05rem; margin-bottom:0; opacity:0.92;">
+A beginner-friendly R package for <strong>publication-ready meta-analysis</strong> —
+pooling evidence from proportions, ratios, and means with minimal code,
+maximal output.
+</p>
+</div>
+
+## What is metapropul? {-}
+
+**metapropul** is an R package designed for systematic reviewers who need to
+conduct and report meta-analyses without wrestling with low-level statistical
+plumbing. It wraps the battle-tested `meta` and `metafor` engines behind a
+clean, consistent interface guided by one simple philosophy:
+
+> *Beginners get everything with minimal code. Experts opt out rather than opt in.*
+
+All sensible defaults are on. Customisation is available but never required.
+
+## What can you do? {-}
+
+<div class="card-grid">
+
+<div class="card">
+<span class="card-icon">📊</span>
+<h4>Pool Effect Sizes</h4>
+<p>Odds ratios, risk ratios, hazard ratios, mean differences, and proportions — all with one function call.</p>
+</div>
+
+<div class="card">
+<span class="card-icon">🌲</span>
+<h4>Forest Plots</h4>
+<p>Publication-ready forest plots with automatic sizing, subgroup panels, and multiple layout styles.</p>
+</div>
+
+<div class="card">
+<span class="card-icon">🔍</span>
+<h4>Publication Bias</h4>
+<p>Egger's test, Begg's test, trim-and-fill, contour-enhanced funnel plots, and limit meta-analysis.</p>
+</div>
+
+<div class="card">
+<span class="card-icon">📐</span>
+<h4>Heterogeneity</h4>
+<p>I², τ², leave-one-out plots, and Baujat plots to understand between-study variation.</p>
+</div>
+
+<div class="card">
+<span class="card-icon">📉</span>
+<h4>Influence Analysis</h4>
+<p>Leave-one-out diagnostics — forest plots and summary tables — to spot influential studies.</p>
+</div>
+
+<div class="card">
+<span class="card-icon">📋</span>
+<h4>Summary Tables</h4>
+<p>gt-powered tables formatted for direct copy-paste into Word or PDF manuscripts.</p>
+</div>
+
+</div>
+
+## Quick start {-}
+
+```r
+# Install from GitHub (CRAN submission pending)
+# install.packages("remotes")
+remotes::install_github("drrubesh/metapropul")
+
+library(metapropul)
+
+# --- Proportions in 3 lines ---
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(dat_bcg, event = "tpos", n = "npos", studylab = "author")
+forest_meta(result)
+```
+
+## How to use this book {-}
+
+This documentation is organised as a guided tour:
+
+| Chapter | What you'll learn |
+|---------|------------------|
+| [Getting Started](#getting-started) | Installation, datasets, and your first analysis |
+| [Ratio outcomes](#meta-ratio) | OR, RR, HR — binary event data |
+| [Mean differences](#meta-mean) | MD and SMD — continuous outcomes |
+| [Proportions](#meta-prop) | Single-arm proportions with PLOGIT / PFT |
+| [Forest plots](#forest-plots) | Customising and exporting forest plots |
+| [Publication bias](#publication-bias) | All tests and funnel plot variants |
+| [Heterogeneity](#heterogeneity) | Diagnosing and visualising heterogeneity |
+| [Influence analysis](#influence-analysis) | Leave-one-out diagnostics |
+| [Meta-regression](#meta-regression) | Exploring moderators |
+| [Summary tables](#tables) | Manuscript-ready tables |
+| [FAQ](#faq) | Common questions and troubleshooting |
+
+## About the author {-}
+
+**Rubeshkumar Polani** is a systematic review methodologist and clinician with
+a passion for making evidence synthesis accessible to practitioners.
+
+<a href="https://github.com/drrubesh/metapropul" class="badge badge-blue" style="text-decoration:none; margin-right:6px;">
+  <i class="fa fa-github"></i> GitHub
+</a>
+<a href="mailto:rubesh.pc@gmail.com" class="badge badge-green" style="text-decoration:none;">
+  <i class="fa fa-envelope"></i> Contact
+</a>
+
+---
+
+*Documentation built with [bookdown](https://bookdown.org).*

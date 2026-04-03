@@ -1,29 +1,52 @@
-Package: propulmeta
+Package: metapropul
 Type: Package
-Title: One-Stop Meta-Analysis Toolkit for Proportions, Ratios, and Means
+Title: A Practical Toolkit for Meta-Analysis in Systematic Reviews
 Version: 0.1.0
-Authors@R: person(given = "Rubeshkumar", family = "Polani", email = "rubesh.pc@gmail.com", role = c("aut", "cre"))
-Description: A user-friendly and publication-ready meta-analysis toolkit built on top of the 'meta',
-    'metafor', and 'metasens' packages. Supports pooled analysis of proportions, risk/odds/hazard ratios,
-    and mean differences. Includes subgroup analysis, influence diagnostics, regression, publication
-    bias detection (Egger/Begg tests, contour and trim-and-fill funnel plots, limit meta-analysis,
-    DOI plots), and highly customizable forest plots for both large and small meta-analyses.
+Authors@R: c(
+    person(given = "Salin K", family = "Eliyas", 
+    email = "salins13@gmail.com", role = c("aut", "cre"), 
+    comment = c(ORCID = "0000-0002-8020-5860")),
+    person(given = "Rubeshkumar", family = "Polani",
+    email = "rubesh@thinkdenominator.com", 
+    role = c("aut"), comment = c(ORCID = "0000-0002-0418-7592")),
+    person(given = "Manikandanesan", family = "Sakthivel", 
+    email = "nesanmbbs@gmail.com", role = "aut", 
+    comment = c(ORCID = "0000-0002-5438-3970")),
+    person(given = "Yuvaraj", family = "Krishnamoorthy",
+    email = "yuvaraj@propulevidence.org", role = "aut",
+    comment = c(ORCID = "0000-0003-4688-510X"))
+  )
+Description: A practical toolkit for systematic reviewers conducting
+    meta-analyses of proportions, risk ratios, odds ratios, hazard ratios,
+    and mean differences. Designed to reduce the gap between statistical
+    analysis and publication-ready reporting, the package provides a unified
+    interface for model fitting, subgroup analysis, meta-regression,
+    leave-one-out influence diagnostics, and heterogeneity assessment.
+    Outputs include formatted summary tables via 'gt', automatically scaled
+    forest plots, cumulative forest plots, and comprehensive publication bias
+    assessment (Egger and Begg tests, trim-and-fill, contour-enhanced funnel
+    plots, limit meta-analysis, and DOI plots).
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Depends: R (>= 3.5)
+RoxygenNote: 7.3.3
+Depends: R (>= 4.1.0)
 Imports:
-    meta,
-    metafor,
-    metasens,
-    tibble,
-    dplyr,
-    gt,
-    glue,
-    magrittr
+    meta (>= 6.0-0),
+    metafor (>= 4.0-0),
+    metasens (>= 1.0-0),
+    tibble (>= 3.0.0),
+    dplyr (>= 1.0.0),
+    gt (>= 0.9.0),
+    tidyselect,
+    graphics,
+    grDevices,
+    stats
 Suggests:
     testthat (>= 3.0.0),
-    rmarkdown
+    knitr,
+    rmarkdown,
+    bookdown,
+    pkgdown
 Config/testthat/edition: 3

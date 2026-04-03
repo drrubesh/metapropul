@@ -2,17 +2,44 @@
 % Please edit documentation in R/table_meta.R
 \name{table_meta}
 \alias{table_meta}
-\title{Generate Meta-Analysis Summary Table}
+\title{Summary table for meta-analysis results}
 \usage{
-table_meta(meta_result)
+table_meta(
+  meta_result,
+  title = NULL,
+  save_as = c("viewer", "docx", "pdf"),
+  filename = NULL
+)
 }
 \arguments{
-\item{meta_result}{A meta-analysis object of class \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}.}
+\item{meta_result}{A \code{meta_ratio}, \code{meta_mean}, or
+\code{meta_prop} object.}
+
+\item{title}{Optional character string for the table title. If \code{NULL}
+(default), an auto-constructed title is used.}
+
+\item{save_as}{One of \code{"viewer"} (default), \code{"docx"} (Word), or
+\code{"pdf"}.}
+
+\item{filename}{Optional file path. If \code{NULL}, a timestamped file is
+created in \code{tempdir()}.}
 }
 \value{
-A \code{gt} table summarizing study-level and pooled results.
+A \code{gt} table (invisibly when saving to file).
 }
 \description{
-Dispatches to the appropriate internal function to generate a summary table
-depending on the class of the meta-analysis object.
+Produces a publication-ready table from a \code{meta_ratio},
+\code{meta_mean}, or \code{meta_prop} object. Includes study-level
+estimates, a pooled row, and a footnote explaining I\eqn{^2}.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data = dat_bcg, event = "tpos", n = "npos",
+  studylab = "author"
+)
+table_meta(result)
+}
+
 }

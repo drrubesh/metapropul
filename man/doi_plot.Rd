@@ -2,11 +2,12 @@
 % Please edit documentation in R/doi_plot.R
 \name{doi_plot}
 \alias{doi_plot}
-\title{DOI Plot for Meta-Analyses with Fewer Than 10 Studies}
+\title{DOI plot for publication bias (small meta-analyses)}
 \usage{
 doi_plot(
   object,
-  save_as = c("viewer", "pdf", "png"),
+  title = NULL,
+  save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = 7,
   height = 7,
@@ -14,19 +15,44 @@ doi_plot(
 )
 }
 \arguments{
-\item{object}{A meta-analysis object of class \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}.}
+\item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
+object.}
 
-\item{save_as}{"viewer", "pdf", or "png". Default is "viewer".}
+\item{title}{Optional character string for the plot title. If \code{NULL}
+(default), an auto-constructed title is used. Set to \code{""} to
+suppress.}
 
-\item{filename}{Optional export filename.}
+\item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
+\code{"png"}, or \code{"tiff"}.}
 
-\item{width, height}{Plot size in inches. Defaults: 7x7.}
+\item{filename}{Optional file path. If \code{NULL} and
+\code{save_as != "viewer"}, a timestamped file is created in
+\code{tempdir()}.}
+
+\item{width, height}{Plot dimensions in inches (default 7\,x\,7).}
 
 \item{...}{Additional arguments passed to \code{metasens::doiplot()}.}
 }
 \value{
-Invisible NULL. Displays or saves the DOI plot.
+Invisibly returns \code{NULL}.
 }
 \description{
-Displays a DOI plot and LFK index using \code{metasens::doiplot()}. Recommended when fewer than 10 studies are included.
+Displays a DOI plot and LFK index using \code{metasens::doiplot()}.
+Recommended for meta-analyses with fewer than 10 studies, where Egger's
+and Begg's tests have low power. For larger analyses, use
+\code{publication_bias()} instead.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+# Use only first 9 studies so k < 10
+small <- dat_bcg[1:9, ]
+result <- meta_prop(
+  data = small, event = "tpos", n = "npos",
+  studylab = "author"
+)
+doi_plot(result)
+doi_plot(result, title = "BCG vaccine (small sample) -- DOI plot")
+}
+
 }

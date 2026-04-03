@@ -2,21 +2,24 @@
 % Please edit documentation in R/plot_utils.R
 \name{.auto_plot_sizing}
 \alias{.auto_plot_sizing}
-\title{Internal helper: Auto-adjust plot size for meta-analysis}
+\title{Internal helper: Auto-adjust plot size for meta-analysis forest plots}
 \usage{
-.auto_plot_sizing(k, height = NULL, width = NULL)
+.auto_plot_sizing(k, height = NULL, width = NULL, type = "ratio")
 }
 \arguments{
 \item{k}{Number of studies.}
 
-\item{height}{Optional fixed height (in inches).}
+\item{height}{Optional fixed height in inches. Overrides auto-sizing.}
 
-\item{width}{Optional fixed width (in inches).}
+\item{width}{Optional fixed width in inches. Overrides auto-sizing.}
+
+\item{type}{Plot type: one of \code{"ratio"}, \code{"mean"}, \code{"prop"},
+\code{"subgroup"}, \code{"influence"}, \code{"cumulative"}.}
 }
 \value{
 A list with \code{height}, \code{width}, and \code{fontsize}.
 }
 \description{
-Internal helper: Auto-adjust plot size for meta-analysis
+Internal helper: Auto-adjust plot size for meta-analysis forest plots
 }
 \keyword{internal}

@@ -1,0 +1,12 @@
+^.*\\.Rproj$
+^\\.Rproj\\.user$
+^\\.git$
+^\\.RData$
+^\\.Rhistory$
+^\\.DS_Store$
+^__MACOSX$
+^renv$
+^renv\\.lock$
+^README\\.Rmd$
+.Rhistory
+.Rproj.user

@@ -2,31 +2,60 @@
 % Please edit documentation in R/publication_bias.R
 \name{publication_bias}
 \alias{publication_bias}
-\title{Publication Bias Inspection for Meta-Analysis (Single Plot Option)}
+\title{Publication bias assessment}
 \usage{
 publication_bias(
   object,
   plot_method = NULL,
-  save_as = c("viewer", "pdf", "png"),
+  title = NULL,
+  save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = 10,
   height = 8
 )
 }
 \arguments{
-\item{object}{A meta-analysis object from \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}.}
+\item{object}{A meta-analysis object from \code{meta_ratio()},
+\code{meta_mean()}, or \code{meta_prop()}.}
 
-\item{plot_method}{One of: "original", "trimfill", "contour", "limitmeta".}
+\item{plot_method}{Character vector of plot methods. Any combination of
+\code{"original"}, \code{"trimfill"}, \code{"contour"},
+\code{"limitmeta"}. If \code{NULL} (default), no plot is produced.}
 
-\item{save_as}{"viewer", "pdf", or "png". Default is "viewer".}
+\item{title}{Optional character string used as the overall plot title
+(printed via \code{mtext()} above the grid). If \code{NULL} (default),
+each panel uses its own label. Set to \code{""} to suppress.}
+
+\item{save_as}{\code{"viewer"} (default), \code{"pdf"}, \code{"png"}, or
+\code{"tiff"}.}
 
 \item{filename}{Optional filename for export.}
 
-\item{width, height}{Export dimensions in inches (default 10x8).}
+\item{width, height}{Export dimensions in inches (default 10 x 8).}
 }
 \value{
-A list with Egger and Begg test results and optional models.
+Invisibly returns a list with Begg's test, Egger's test,
+trim-and-fill, and limit meta-analysis results where available.
 }
 \description{
-Performs Egger’s and Begg’s tests, and optionally displays one publication bias plot.
+Performs Egger's and Begg's tests, computes trim-and-fill, and optionally
+displays one or more publication bias plots arranged in a grid automatically.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data = dat_bcg,
+  event = "tpos",
+  n = "npos",
+  studylab = "author"
+)
+publication_bias(result)
+publication_bias(
+  result,
+  plot_method = c("original", "trimfill"),
+  title = "BCG vaccine -- publication bias"
+)
+}
+
 }

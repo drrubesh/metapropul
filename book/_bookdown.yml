@@ -1,0 +1,24 @@
+book_filename: "metapropul"
+new_session: yes
+before_chapter_script: _common.R
+delete_merged_file: true
+
+rmd_files: [
+  "index.Rmd",
+  "01-getting-started.Rmd",
+  "02-meta-ratio.Rmd",
+  "03-meta-mean.Rmd",
+  "04-meta-prop.Rmd",
+  "05-forest-plots.Rmd",
+  "06-publication-bias.Rmd",
+  "07-heterogeneity.Rmd",
+  "08-influence.Rmd",
+  "09-meta-regression.Rmd",
+  "10-tables.Rmd",
+  "11-faq.Rmd",
+  "references.Rmd"
+]
+
+language:
+  ui:
+    chapter_name: "Chapter "

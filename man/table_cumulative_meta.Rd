@@ -2,18 +2,59 @@
 % Please edit documentation in R/table_cumulative_meta.R
 \name{table_cumulative_meta}
 \alias{table_cumulative_meta}
-\title{Table of Cumulative Meta-Analysis}
+\title{Cumulative meta-analysis table}
 \usage{
-table_cumulative_meta(object, include_heterogeneity = TRUE)
+table_cumulative_meta(
+  object,
+  title = NULL,
+  include_heterogeneity = TRUE,
+  save_as = c("viewer", "docx", "pdf"),
+  filename = NULL
+)
 }
 \arguments{
-\item{object}{A \code{meta_prop}, \code{meta_ratio}, or \code{meta_mean} object.}
+\item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
+object.}
 
-\item{include_heterogeneity}{Logical. Show I² column (default = TRUE).}
+\item{title}{Optional character string for the table title. If \code{NULL}
+(default), an auto-constructed title is used.}
+
+\item{include_heterogeneity}{Logical. Include I\eqn{^2} and Tau\eqn{^2}
+columns (default \code{TRUE}).}
+
+\item{save_as}{One of \code{"viewer"} (default), \code{"docx"}, or
+\code{"pdf"}.}
+
+\item{filename}{Optional file path. If \code{NULL}, a timestamped file is
+created in \code{tempdir()} when saving to file.}
 }
 \value{
-A publication-ready \code{gt} table.
+A \code{gt} table, invisibly if saved to file.
 }
 \description{
-Produces a step-by-step table of cumulative pooled estimates.
+Produces a step-by-step table of cumulative pooled estimates, adding one
+study at a time in the order they appear in the data.
+}
+\details{
+\strong{Study ordering:} Sort your data by year before fitting the model
+for a meaningful cumulative analysis:
+\preformatted{
+dat <- dat[order(dat$year), ]
+result <- meta_ratio(data = dat, ...)
+table_cumulative_meta(result)
+}
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+dat_bcg <- dat_bcg[order(dat_bcg$year), ]
+result <- meta_prop(
+  data = dat_bcg,
+  event = "tpos",
+  n = "npos",
+  studylab = "author"
+)
+table_cumulative_meta(result)
+}
+
 }

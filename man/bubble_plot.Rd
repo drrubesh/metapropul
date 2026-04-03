@@ -2,13 +2,15 @@
 % Please edit documentation in R/bubble_plot.R
 \name{bubble_plot}
 \alias{bubble_plot}
-\title{Bubble Plot for Meta-Regression}
+\title{Bubble plot for meta-regression}
 \usage{
 bubble_plot(
   meta_reg_object,
   moderator = NULL,
+  title = NULL,
   plot_all_levels = TRUE,
-  save_as = c("viewer", "pdf", "png"),
+  max_levels = 6L,
+  save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = 10,
   height = 8,
@@ -16,23 +18,58 @@ bubble_plot(
 )
 }
 \arguments{
-\item{meta_reg_object}{A \code{meta_reg} object created with \code{meta_reg()}.}
+\item{meta_reg_object}{A \code{meta_reg} object from \code{meta_reg()}.}
 
-\item{moderator}{Character. Name of moderator variable (required if multiple predictors).}
+\item{moderator}{Character. Moderator variable to plot. Required when the
+model has multiple predictors. If \code{NULL} and only one predictor
+exists, that predictor is used automatically.}
 
-\item{plot_all_levels}{Logical. For categorical moderators, plot each dummy variable (default = TRUE).}
+\item{title}{Optional character string printed above the plot (or grid). If
+\code{NULL} (default), an auto-constructed title is used. Set to
+\code{""} to suppress.}
 
-\item{save_as}{"viewer", "pdf", or "png". Default is "viewer".}
+\item{plot_all_levels}{Logical. For categorical moderators, produce a panel
+per dummy variable (default \code{TRUE}).}
 
-\item{filename}{Optional file name if exporting.}
+\item{max_levels}{Integer. Maximum categorical levels to plot (default 6).}
 
-\item{width, height}{Dimensions in inches for export. Defaults: width = 10, height = 8.}
+\item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
+\code{"png"}, or \code{"tiff"}.}
+
+\item{filename}{Optional file path. If \code{NULL} and
+\code{save_as != "viewer"}, a timestamped file is created in
+\code{tempdir()}.}
+
+\item{width, height}{Export dimensions per panel in inches (default 10\,x\,8).}
 
 \item{...}{Additional arguments passed to \code{metafor::regplot()}.}
 }
 \value{
-A bubble plot rendered or saved.
+Invisibly returns \code{TRUE}.
 }
 \description{
-Displays a bubble plot for a \code{meta_reg} object using \code{metafor::regplot()}.
+Displays a bubble plot for a \code{meta_reg} object using
+\code{metafor::regplot()}. Bubble size is proportional to study weight.
+For categorical moderators, one panel is produced per level with automatic
+grid layout (up to 6 levels).
+}
+\details{
+\strong{y-axis note:} Values are on the model scale (log for ratio measures,
+logit for proportions, raw for means).
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data = dat_bcg, event = "tpos", n = "npos",
+  studylab = "author"
+)
+reg <- meta_reg(result,
+  data = dat_bcg, moderators = ~ablat,
+  studylab = "author"
+)
+bubble_plot(reg)
+bubble_plot(reg, title = "BCG vaccine -- latitude moderator")
+}
+
 }

@@ -2,58 +2,90 @@
 % Please edit documentation in R/meta_mean.R
 \name{meta_mean}
 \alias{meta_mean}
-\title{Meta-analysis of Means (Mean Difference or Standardized Mean Difference)}
+\title{Meta-analysis of means (MD or SMD)}
 \usage{
 meta_mean(
   data,
-  mean.e,
-  sd.e,
-  n.e,
-  mean.c,
-  sd.c,
-  n.c,
+  mean.e = NULL,
+  sd.e = NULL,
+  n.e = NULL,
+  mean.c = NULL,
+  sd.c = NULL,
+  n.c = NULL,
+  effect = NULL,
+  lower = NULL,
+  upper = NULL,
+  ci_level = 0.95,
   studylab = NULL,
   subgroup = NULL,
   model = "random",
   measure = "MD",
   tau_method = "REML",
   ci_method = "HK",
+  prediction_interval = TRUE,
   verbose = FALSE
 )
 }
 \arguments{
-\item{data}{Dataframe containing the meta-analysis data.}
+\item{data}{A data frame containing the meta-analysis data.}
 
-\item{mean.e}{Column name for mean in experimental group.}
+\item{mean.e}{Column name for the mean in the experimental group.}
 
-\item{sd.e}{Column name for standard deviation in experimental group.}
+\item{sd.e}{Column name for the SD in the experimental group.}
 
-\item{n.e}{Column name for total number in experimental group.}
+\item{n.e}{Column name for the sample size in the experimental group.}
 
-\item{mean.c}{Column name for mean in control group.}
+\item{mean.c}{Column name for the mean in the control group.}
 
-\item{sd.c}{Column name for standard deviation in control group.}
+\item{sd.c}{Column name for the SD in the control group.}
 
-\item{n.c}{Column name for total number in control group.}
+\item{n.c}{Column name for the sample size in the control group.}
+
+\item{effect}{Column name for a pre-computed effect size (MD or SMD).
+Optional alternative to supplying raw group data.}
+
+\item{lower}{Column name for the lower CI bound of \code{effect}.}
+
+\item{upper}{Column name for the upper CI bound of \code{effect}.}
+
+\item{ci_level}{Confidence level for pre-computed CIs. Default \code{0.95}.}
 
 \item{studylab}{Column name for study labels (optional).}
 
-\item{subgroup}{Column name for subgroup analysis (optional).}
+\item{subgroup}{Column name for subgroup variable (optional).}
 
-\item{model}{"random" or "fixed" effects model (default = "random").}
+\item{model}{\code{"random"} (default) or \code{"fixed"}.}
 
-\item{measure}{Type of summary measure ("MD" = mean difference, "SMD" = standardized mean difference; default = "MD").}
+\item{measure}{\code{"MD"} (default) or \code{"SMD"}.}
 
-\item{tau_method}{Tau^2 method: "REML", "PM", "DL", "ML", "HS", "SJ", "HE", "EB".}
+\item{tau_method}{Tau\eqn{^2} estimator. Default \code{"REML"}.}
 
-\item{ci_method}{For random model: "classic", "HK" (Hartung-Knapp), or "KR".}
+\item{ci_method}{CI method for the pooled estimate.
+\code{"HK"} (default), \code{"classic"}, or \code{"KR"}.}
 
-\item{verbose}{Logical; if TRUE, prints progress messages (default is FALSE).}
+\item{prediction_interval}{Logical. Compute a prediction interval (default
+\code{TRUE}).}
+
+\item{verbose}{Logical. Print progress messages (default \code{FALSE}).}
 }
 \value{
-A list containing the meta object, tidy summary table, influence analysis, and metadata.
+An object of class \code{"meta_mean"}.
 }
 \description{
-Performs a meta-analysis of continuous outcomes (mean differences or standardized mean differences),
-with support for prediction intervals, subgroup tests, and influence analysis (leave-one-out).
+Performs a meta-analysis of continuous outcomes using mean difference (MD)
+or standardised mean difference (SMD). Accepts either raw group-level
+statistics or pre-computed effect sizes with confidence intervals.
+}
+\examples{
+\donttest{
+data(dat_normand1999, package = "metapropul")
+result <- meta_mean(
+  data     = dat_normand1999,
+  mean.e   = "m1i", sd.e = "sd1i", n.e = "n1i",
+  mean.c   = "m2i", sd.c = "sd2i", n.c = "n2i",
+  studylab = "source"
+)
+summary(result)
+}
+
 }

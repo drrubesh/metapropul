@@ -2,7 +2,7 @@
 % Please edit documentation in R/meta_prop.R
 \name{meta_prop}
 \alias{meta_prop}
-\title{Meta-analysis of Proportions (Logit with Influence Analysis)}
+\title{Meta-analysis of proportions}
 \usage{
 meta_prop(
   data,
@@ -11,34 +11,62 @@ meta_prop(
   studylab = NULL,
   subgroup = NULL,
   model = "random",
+  sm = "PLOGIT",
   tau_method = "REML",
   ci_method = "HK",
+  prediction_interval = TRUE,
   verbose = FALSE
 )
 }
 \arguments{
-\item{data}{Dataframe with proportion data.}
+\item{data}{A data frame with proportion data.}
 
-\item{event}{Column name for event count.}
+\item{event}{Column name for event counts.}
 
-\item{n}{Column name for total count.}
+\item{n}{Column name for total counts.}
 
 \item{studylab}{Column name for study labels (optional).}
 
-\item{subgroup}{Column name for subgroup analysis (optional).}
+\item{subgroup}{Column name for subgroup variable (optional).}
 
-\item{model}{"random" or "fixed" (default = "random").}
+\item{model}{\code{"random"} (default) or \code{"fixed"}.}
 
-\item{tau_method}{Tau^2 method (default = "REML").}
+\item{sm}{Summary measure: \code{"PLOGIT"} (logit, default) or
+\code{"PFT"} (Freeman-Tukey double arcsine -- preferred when proportions
+are near 0 or 1). Note that \code{"PFT"} results are back-transformed
+using \code{meta}'s built-in method; displayed values are always on the
+proportion percentage scale.}
 
-\item{ci_method}{CI method for random-effects (default = "HK").}
+\item{tau_method}{Tau\eqn{^2} estimator. Default \code{"REML"}.}
 
-\item{verbose}{Logical; if TRUE, prints progress messages (default is FALSE).}
+\item{ci_method}{CI method for the pooled estimate.
+\code{"HK"} (default), \code{"classic"}, or \code{"KR"}.}
+
+\item{prediction_interval}{Logical. Compute a prediction interval (default
+\code{TRUE}).}
+
+\item{verbose}{Logical. Print progress messages (default \code{FALSE}).}
 }
 \value{
-A list with meta object, tidy table, subgroup summary, influence analysis (all in \%), and metadata.
+An object of class \code{"meta_prop"}.
 }
 \description{
-Performs a meta-analysis of proportions using logit transformation via metaprop().
-Includes influence analysis and formatted outputs in percentages.
+Performs a meta-analysis of proportions using logit (\code{"PLOGIT"}) or
+Freeman-Tukey double arcsine (\code{"PFT"}) transformation via
+\code{meta::metaprop()}. Results are expressed as percentages on the
+back-transformed scale. Prediction intervals, subgroup analysis, and
+leave-one-out influence analysis are included by default.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data     = dat_bcg,
+  event    = "tpos",
+  n        = "npos",
+  studylab = "author"
+)
+summary(result)
+}
+
 }

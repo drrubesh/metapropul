@@ -2,20 +2,49 @@
 % Please edit documentation in R/table_influence.R
 \name{table_influence}
 \alias{table_influence}
-\title{Table: Leave-One-Out Influence Analysis}
+\title{Leave-one-out influence table}
 \usage{
-table_influence(object, include_heterogeneity = TRUE)
+table_influence(
+  object,
+  title = NULL,
+  include_heterogeneity = TRUE,
+  save_as = c("viewer", "docx", "pdf"),
+  filename = NULL
+)
 }
 \arguments{
-\item{object}{A meta_prop, meta_ratio, or meta_mean object}
+\item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
+object.}
 
-\item{include_heterogeneity}{Logical; if TRUE, includes heterogeneity statistics.}
+\item{title}{Optional character string for the table title. If \code{NULL}
+(default), an auto-constructed title is used.}
 
-\item{...}{Additional arguments passed to methods.}
+\item{include_heterogeneity}{Logical. Include I\eqn{^2} and Tau\eqn{^2}
+columns (default \code{TRUE}).}
+
+\item{save_as}{One of \code{"viewer"} (default), \code{"docx"}, or
+\code{"pdf"}.}
+
+\item{filename}{Optional file path. If \code{NULL}, a timestamped file is
+created in \code{tempdir()} when saving to file.}
 }
 \value{
-A gtsummary publication-ready table
+A \code{gt} table, invisibly if saved to file.
 }
 \description{
-Table: Leave-One-Out Influence Analysis
+Produces a publication-ready table of leave-one-out pooled estimates from a
+\code{meta_ratio}, \code{meta_mean}, or \code{meta_prop} object.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data = dat_bcg,
+  event = "tpos",
+  n = "npos",
+  studylab = "author"
+)
+table_influence(result)
+}
+
 }

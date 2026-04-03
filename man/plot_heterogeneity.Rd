@@ -2,12 +2,13 @@
 % Please edit documentation in R/plot_heterogeneity.R
 \name{plot_heterogeneity}
 \alias{plot_heterogeneity}
-\title{Heterogeneity Plot (I2 or Tau2) from Leave-One-Out Meta-Analysis}
+\title{Leave-one-out heterogeneity plot}
 \usage{
 plot_heterogeneity(
   object,
   stat = c("I2", "tau2"),
-  save_as = c("viewer", "pdf", "png"),
+  title = NULL,
+  save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = 10,
   height = NULL,
@@ -15,21 +16,50 @@ plot_heterogeneity(
 )
 }
 \arguments{
-\item{object}{A \code{meta_prop}, \code{meta_ratio}, or \code{meta_mean} object.}
+\item{object}{A \code{meta_prop}, \code{meta_ratio}, or \code{meta_mean}
+object.}
 
-\item{stat}{"I2" or "tau2" (default "I2").}
+\item{stat}{\code{"I2"} (default) or \code{"tau2"}.}
 
-\item{save_as}{"viewer", "pdf", or "png".}
+\item{title}{Optional character string for the plot title. If \code{NULL}
+(default), an informative auto-title is used. Set to \code{""} to
+suppress the title.}
 
-\item{filename}{Optional file name if saving.}
+\item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
+\code{"png"}, or \code{"tiff"}.}
 
-\item{width, height}{Dimensions for export (inches).}
+\item{filename}{Optional file name for saving.}
 
-\item{...}{Additional arguments for plot().}
+\item{width, height}{Export dimensions in inches. Default width is 10; height
+is chosen automatically if \code{NULL}.}
+
+\item{...}{Additional arguments passed to \code{graphics::plot()}.}
 }
 \value{
-A heterogeneity plot.
+Invisibly returns \code{TRUE}.
 }
 \description{
-Heterogeneity Plot (I2 or Tau2) from Leave-One-Out Meta-Analysis
+Plots I\eqn{^2} or Tau\eqn{^2} from a leave-one-out meta-analysis to show
+how much each study contributes to between-study heterogeneity.
+}
+\details{
+\strong{Interpreting I\eqn{^2}:} I\eqn{^2} is the proportion of total
+observed variability attributable to between-study heterogeneity -- not a
+test for it, and not a fixed-threshold measure of its magnitude. A high
+I\eqn{^2} does not automatically mean heterogeneity is clinically important;
+use Tau\eqn{^2} and the prediction interval for that judgement.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data = dat_bcg,
+  event = "tpos",
+  n = "npos",
+  studylab = "author"
+)
+plot_heterogeneity(result)
+plot_heterogeneity(result, stat = "tau2")
+}
+
 }

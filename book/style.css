@@ -1,0 +1,312 @@
+/* ============================================================
+   metapropul bookdown theme
+   ============================================================ */
+
+/* ── Fonts ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --brand:        #2e5d9e;
+  --brand-light:  #4a7ec4;
+  --brand-dark:   #1a3f6f;
+  --accent:       #e8611a;
+  --bg-light:     #f7f9fc;
+  --border:       #dce4ef;
+  --code-bg:      #1e2432;
+  --text:         #1c2b3a;
+  --muted:        #6b7f96;
+  --success:      #2c9e5a;
+  --warning:      #d97706;
+  --danger:       #dc2626;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 16px;
+}
+
+/* ── Sidebar ────────────────────────────────────────────── */
+.book .book-summary {
+  background: var(--brand-dark);
+}
+
+.book .book-summary ul.summary li a {
+  color: #c8d8f0 !important;
+  font-size: 13.5px;
+  font-weight: 400;
+  padding: 6px 15px;
+  transition: all 0.15s ease;
+}
+
+.book .book-summary ul.summary li a:hover {
+  color: #fff !important;
+  background: rgba(255,255,255,0.08) !important;
+  text-decoration: none;
+}
+
+.book .book-summary ul.summary li.active > a {
+  color: #fff !important;
+  background: var(--brand) !important;
+  border-left: 3px solid var(--accent);
+  font-weight: 600;
+}
+
+.book .book-summary ul.summary li.divider {
+  background: rgba(255,255,255,0.15);
+}
+
+/* ── Body / Content ─────────────────────────────────────── */
+.book .book-body .page-wrapper .page-inner {
+  max-width: 880px;
+  padding: 30px 40px 60px;
+}
+
+/* ── Headings ───────────────────────────────────────────── */
+h1, h2, h3, h4 {
+  font-weight: 700;
+  color: var(--brand-dark);
+  line-height: 1.25;
+}
+
+h1.title {
+  font-size: 2.4rem;
+  border-bottom: 3px solid var(--brand);
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+}
+
+h2 {
+  font-size: 1.6rem;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 8px;
+  margin-top: 2.5rem;
+}
+
+h3 {
+  font-size: 1.2rem;
+  color: var(--brand);
+  margin-top: 2rem;
+}
+
+/* ── Code blocks ────────────────────────────────────────── */
+pre {
+  background: var(--code-bg) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 18px 22px !important;
+  margin: 1.2em 0 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18) !important;
+  overflow-x: auto;
+}
+
+pre code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  font-size: 13.5px !important;
+  color: #e2e8f4 !important;
+  background: transparent !important;
+  line-height: 1.6;
+}
+
+code {
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 13px;
+  background: #eef2f8;
+  color: var(--brand-dark);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* output blocks */
+pre.r-output, pre.sourceCode.r + pre {
+  background: #0f1923 !important;
+  border-left: 3px solid var(--success) !important;
+}
+
+/* ── Callout boxes ──────────────────────────────────────── */
+.callout-tip,
+.callout-note,
+.callout-warning,
+.callout-important {
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1.4em 0;
+  border-left: 5px solid;
+}
+
+.callout-tip {
+  background: #edf7f1;
+  border-color: var(--success);
+  color: #1a4a2e;
+}
+
+.callout-note {
+  background: #eff4fb;
+  border-color: var(--brand);
+  color: #1a2f4a;
+}
+
+.callout-warning {
+  background: #fef9ee;
+  border-color: var(--warning);
+  color: #4a2e00;
+}
+
+.callout-important {
+  background: #fef2f2;
+  border-color: var(--danger);
+  color: #4a0000;
+}
+
+.callout-tip strong,
+.callout-note strong,
+.callout-warning strong,
+.callout-important strong {
+  display: block;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+/* ── Tables ─────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 1.2em 0;
+}
+
+thead tr {
+  background: var(--brand);
+  color: #fff;
+}
+
+thead th {
+  padding: 10px 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background: var(--bg-light);
+}
+
+tbody tr:hover {
+  background: #dce9fa;
+}
+
+tbody td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Function reference boxes ───────────────────────────── */
+.fn-box {
+  background: linear-gradient(135deg, #f0f6ff 0%, #e8f0fa 100%);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--brand);
+  border-radius: 8px;
+  padding: 18px 22px;
+  margin: 1.6em 0;
+}
+
+.fn-box h4 {
+  color: var(--brand-dark);
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+.fn-box code {
+  background: #d0e0f7;
+  color: var(--brand-dark);
+}
+
+/* ── Quick-start cards ──────────────────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 1.6em 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 6px 18px rgba(46,93,158,0.15);
+  transform: translateY(-2px);
+}
+
+.card h4 {
+  margin-top: 0;
+  font-size: 1rem;
+  color: var(--brand);
+}
+
+.card p {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.card .card-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  display: block;
+}
+
+/* ── Badges ─────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.badge-blue   { background: #dbeafe; color: #1d4ed8; }
+.badge-green  { background: #d1fae5; color: #065f46; }
+.badge-orange { background: #ffedd5; color: #9a3412; }
+.badge-purple { background: #ede9fe; color: #5b21b6; }
+
+/* ── Prev/Next navigation ───────────────────────────────── */
+.navigation {
+  margin-top: 3em;
+  border-top: 2px solid var(--border);
+  padding-top: 1.5em;
+}
+
+/* ── TOC ────────────────────────────────────────────────── */
+.book .book-body .page-wrapper .page-inner section.normal .toc {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 2em;
+}
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .book .book-body .page-wrapper .page-inner {
+    padding: 20px 18px 40px;
+  }
+  h1.title { font-size: 1.8rem; }
+  h2 { font-size: 1.3rem; }
+  .card-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Print ──────────────────────────────────────────────── */
+@media print {
+  .book .book-summary { display: none; }
+  pre { background: #f5f5f5 !important; color: #222 !important; }
+}

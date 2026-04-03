@@ -2,7 +2,7 @@
 % Please edit documentation in R/meta_ratio.R
 \name{meta_ratio}
 \alias{meta_ratio}
-\title{Meta-analysis of Ratios (RR, OR, HR) with Auto-Preparation and Influence Analysis}
+\title{Meta-analysis of ratio measures}
 \usage{
 meta_ratio(
   data,
@@ -13,50 +13,129 @@ meta_ratio(
   effect = NULL,
   lower = NULL,
   upper = NULL,
+  ci_level = 0.95,
   studylab = NULL,
   subgroup = NULL,
   model = "random",
   measure = "OR",
   tau_method = "REML",
-  ci_method = "classic",
+  ci_method = "HK",
+  prediction_interval = TRUE,
   verbose = FALSE
 )
 }
 \arguments{
-\item{data}{Dataframe containing the meta-analysis data.}
+\item{data}{A data frame containing the meta-analysis dataset.}
 
-\item{event.e}{Number of events in experimental group}
+\item{event.e}{Character string giving the column name for the number
+of events in the experimental or exposed group.}
 
-\item{n.e}{Sample size in experimental group}
+\item{n.e}{Character string giving the column name for the total
+number of participants in the experimental or exposed group.}
 
-\item{event.c}{Number of events in control group}
+\item{event.c}{Character string giving the column name for the number
+of events in the control or unexposed group.}
 
-\item{n.c}{Sample size in control group}
+\item{n.c}{Character string giving the column name for the total
+number of participants in the control or unexposed group.}
 
-\item{effect}{Column name for effect size (optional if event data provided).}
+\item{effect}{Character string giving the column name for the
+pre-computed study effect estimate. Supported measures are OR, RR,
+and HR, depending on \code{measure}.}
 
-\item{lower}{Column name for lower bound of 95\% CI (optional).}
+\item{lower}{Character string giving the column name for the lower
+confidence interval bound of the pre-computed effect estimate.}
 
-\item{upper}{Column name for upper bound of 95\% CI (optional).}
+\item{upper}{Character string giving the column name for the upper
+confidence interval bound of the pre-computed effect estimate.}
 
-\item{studylab}{Column name for study labels (optional).}
+\item{ci_level}{Numeric scalar giving the confidence level used for
+pre-computed effect sizes, typically \code{0.95}. This is used to
+derive the standard error from \code{lower} and \code{upper}.}
 
-\item{subgroup}{Column name for subgroup analysis (optional).}
+\item{studylab}{Optional character string giving the column name for
+study labels. If omitted, labels are auto-generated as
+\code{"Study_1"}, \code{"Study_2"}, and so on.}
 
-\item{model}{"random" or "fixed" (default = "random").}
+\item{subgroup}{Optional character string giving the column name for
+a subgroup variable used in subgroup meta-analysis.}
 
-\item{measure}{"OR", "RR", or "HR" (default = "OR").}
+\item{model}{Character string specifying the meta-analytic model:
+\code{"random"} for random-effects or \code{"fixed"} for
+fixed-effect analysis.}
 
-\item{tau_method}{Tau^2 method: "REML", "PM", "DL", "ML", "HS", "SJ", "HE", "EB".}
+\item{measure}{Character string specifying the effect measure:
+\code{"OR"} for odds ratio, \code{"RR"} for risk ratio, or
+\code{"HR"} for hazard ratio.}
 
-\item{ci_method}{For random model: "classic", "HK" (Hartung-Knapp), or "KR".}
+\item{tau_method}{Character string specifying the method used to
+estimate between-study variance tau-squared in random-effects
+models. Options are \code{"REML"} (restricted maximum likelihood),
+\code{"PM"} (Paule-Mandel), \code{"DL"} (DerSimonian-Laird),
+\code{"ML"} (maximum likelihood), \code{"HS"} (Hunter-Schmidt),
+\code{"SJ"} (Sidik-Jonkman), \code{"HE"} (Hedges), and
+\code{"EB"} (empirical Bayes).}
 
-\item{verbose}{Logical; if TRUE, prints progress messages (default is FALSE).}
+\item{ci_method}{Character string specifying the method used for
+random-effects confidence intervals. Options are \code{"HK"}
+(Hartung-Knapp), \code{"classic"}, and \code{"KR"}.}
+
+\item{prediction_interval}{Logical; if \code{TRUE}, a prediction
+interval is computed for the pooled random-effects estimate where
+applicable.}
+
+\item{verbose}{Logical; if \code{TRUE}, progress messages are printed
+during model fitting.}
 }
 \value{
-A list with elements: meta (meta object), table (tidy results), and influence.analysis.
+An object of class \code{"meta_ratio"} containing:
+\itemize{
+\item \code{meta}: the fitted \pkg{meta} object
+\item \code{table}: a tidy study-level summary table
+\item \code{meta.subgroup.summary}: subgroup pooled estimates, if
+subgroup analysis was requested
+\item \code{influence.analysis}: leave-one-out influence analysis
+\item model settings such as \code{model}, \code{measure},
+\code{tau_method}, and \code{ci_method}
+}
 }
 \description{
-Performs a meta-analysis of risk ratios (RR), odds ratios (OR), or hazard ratios (HR),
-with support for prediction intervals, subgroup tests, and influence analysis (leave-one-out).
+Conducts a meta-analysis of ratio effect measures using either raw
+event-count data or pre-computed study-level effect estimates with
+confidence intervals.
+}
+\details{
+Two input formats are supported:
+\itemize{
+\item Raw 2 x 2 data using \code{event.e}, \code{n.e},
+\code{event.c}, and \code{n.c}
+\item Pre-computed effect sizes using \code{effect}, \code{lower},
+and \code{upper}
+}
+
+The function supports odds ratios (OR), risk ratios (RR), and hazard
+ratios (HR). Hazard ratios require pre-computed effect sizes and
+cannot be derived from raw event-count data.
+
+If raw event-count data are supplied, the function fits the model
+using \code{meta::metabin()}. If pre-computed effect sizes are
+supplied, the function log-transforms the estimates and derives
+standard errors from the reported confidence intervals before fitting
+the model using \code{meta::metagen()}.
+
+Studies with non-finite log-transformed values are excluded with a
+warning when pre-computed effect sizes are used.
+}
+\examples{
+data(dat_bcg, package = "metapropul")
+
+result <- meta_ratio(
+  data = dat_bcg,
+  event.e = "tpos",
+  n.e = "npos",
+  event.c = "cpos",
+  n.c = "cneg",
+  studylab = "author"
+)
+
 }

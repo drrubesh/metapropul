@@ -2,33 +2,59 @@
 % Please edit documentation in R/plot_baujat.R
 \name{plot_baujat}
 \alias{plot_baujat}
-\title{Baujat Plot for Meta-Analysis}
+\title{Baujat plot}
 \usage{
 plot_baujat(
   object,
-  save_as = c("viewer", "pdf", "png"),
+  title = NULL,
+  save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = 10,
   height = 8,
+  label_threshold = 1,
   ...
 )
 }
 \arguments{
-\item{object}{A \code{meta_prop}, \code{meta_ratio}, or \code{meta_mean} object.}
+\item{object}{A \code{meta_prop}, \code{meta_ratio}, or \code{meta_mean}
+object.}
 
-\item{save_as}{One of "viewer", "pdf", or "png". Default is "viewer".}
+\item{title}{Optional character string for the plot title. If \code{NULL}
+(default), \code{"Baujat Plot"} is used. Set to \code{""} to suppress.}
 
-\item{filename}{Optional file name (used when save_as is "pdf" or "png").}
+\item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
+\code{"png"}, or \code{"tiff"}.}
 
-\item{width}{Width of plot in inches (default = 10).}
+\item{filename}{Optional file name for export.}
 
-\item{height}{Height of plot in inches (default = 8).}
+\item{width}{Width in inches (default 10).}
 
-\item{...}{Additional arguments passed to \code{meta::baujat()}.}
+\item{height}{Height in inches (default 8).}
+
+\item{label_threshold}{Numeric. A study is labelled if its x or y value
+exceeds \code{mean + label_threshold * sd} on that axis. Default
+\code{1.0}; increase for fewer labels.}
+
+\item{...}{Currently unused; reserved for future arguments.}
 }
 \value{
-A Baujat plot rendered or saved.
+Invisibly returns a data frame with columns \code{studlab},
+\code{het_contribution}, and \code{influence}.
 }
 \description{
-Displays the contribution of each study to heterogeneity (Q) vs. influence on pooled estimate.
+Displays each study's contribution to overall heterogeneity (x-axis) versus
+its influence on the pooled estimate (y-axis). Studies exceeding a threshold
+on either axis are labelled automatically to reduce overplotting.
+}
+\examples{
+\donttest{
+data(dat_bcg, package = "metapropul")
+result <- meta_prop(
+  data = dat_bcg, event = "tpos", n = "npos",
+  studylab = "author"
+)
+plot_baujat(result)
+plot_baujat(result, title = "BCG vaccine \u2014 Baujat plot")
+}
+
 }
