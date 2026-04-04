@@ -240,10 +240,13 @@ meta_mean <- function(data,
   # -- Influence analysis -------------------------------------------------------
   inf_random <- model == "random"
   inf_common <- model == "fixed"
-  influence <- tryCatch(
+
+  influence_obj <- tryCatch(
     {
-      inf <- meta::metainf(meta_result,
-        random = inf_random, common = inf_common
+      inf <- meta::metainf(
+        meta_result,
+        random = inf_random,
+        common = inf_common
       )
       inf$studlab <- make.unique(inf$studlab)
       inf
@@ -251,12 +254,27 @@ meta_mean <- function(data,
     error = function(e) NULL
   )
 
+  influence_data <- if (!is.null(influence_obj)) {
+    tibble::tibble(
+      Study = influence_obj$studlab,
+      Estimate = round(influence_obj$TE, 3),
+      lower = round(influence_obj$lower, 3),
+      upper = round(influence_obj$upper, 3),
+      p.value = round(influence_obj$pval, 4),
+      Tau2 = round(influence_obj$tau2, 4),
+      I2 = round(influence_obj$I2 * 100, 1)
+    )
+  } else {
+    NULL
+  }
+
   structure(
     list(
       meta                  = meta_result,
       table                 = tidy_tbl,
       meta.subgroup.summary = meta.subgroup.summary,
-      influence.analysis    = influence,
+      influence.analysis    = influence_data,
+      influence.meta        = influence_obj,
       model                 = model,
       measure               = measure,
       tau_method            = tau_method,

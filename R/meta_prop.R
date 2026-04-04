@@ -223,6 +223,7 @@ meta_prop <- function(data,
   # -- Influence ----------------------------------------------------------------
   inf_random <- model == "random"
   inf_common <- model == "fixed"
+
   influence_obj <- tryCatch(
     meta::metainf(meta_result, random = inf_random, common = inf_common),
     error = function(e) NULL
@@ -231,10 +232,10 @@ meta_prop <- function(data,
   influence_data <- if (!is.null(influence_obj)) {
     keep_rows <- influence_obj$studlab != " " & !is.na(influence_obj$TE)
     tibble::tibble(
-      Study      = influence_obj$studlab[keep_rows],
+      Study = influence_obj$studlab[keep_rows],
       Proportion = round(.bt(influence_obj$TE[keep_rows]), 1),
-      lower      = round(.bt(influence_obj$lower[keep_rows]), 1),
-      upper      = round(.bt(influence_obj$upper[keep_rows]), 1)
+      lower = round(.bt(influence_obj$lower[keep_rows]), 1),
+      upper = round(.bt(influence_obj$upper[keep_rows]), 1)
     )
   } else {
     NULL
@@ -242,18 +243,18 @@ meta_prop <- function(data,
 
   structure(
     list(
-      meta                  = meta_result,
-      table                 = tidy_tbl,
-      meta.summary          = pooled,
+      meta = meta_result,
+      table = tidy_tbl,
+      meta.summary = pooled,
       meta.subgroup.summary = meta.subgroup.summary,
-      influence.analysis    = influence_data,
-      influence.meta        = influence_obj,
-      model                 = model,
-      measure               = "Proportion",
-      sm                    = sm,
-      tau_method            = tau_method,
-      ci_method             = ci_method,
-      subgroup              = !is.null(subgroup)
+      influence.analysis = influence_data,
+      influence.meta = influence_obj,
+      model = model,
+      measure = "Proportion",
+      sm = sm,
+      tau_method = tau_method,
+      ci_method = ci_method,
+      subgroup = !is.null(subgroup)
     ),
     class = "meta_prop"
   )

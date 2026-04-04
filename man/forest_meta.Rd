@@ -7,9 +7,11 @@
 forest_meta(x, ...)
 }
 \arguments{
-\item{x}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop} object.}
+\item{x}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
+object.}
 
-\item{...}{Additional arguments passed to the class-specific plotting method.}
+\item{...}{Additional arguments passed to the class-specific plotting
+method.}
 }
 \value{
 Invisibly returns \code{TRUE}.
@@ -23,7 +25,9 @@ method is selected automatically based on the class of \code{x}.
 \donttest{
 data(dat_bcg, package = "metapropul")
 result <- meta_prop(
-  data = dat_bcg, event = "tpos", n = "npos",
+  data = dat_bcg,
+  event = "tpos",
+  n = "npos",
   studylab = "author"
 )
 forest_meta(result)

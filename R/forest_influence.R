@@ -10,6 +10,8 @@
 #'   \code{""} to suppress.
 #' @param layout Layout style. One of \code{"RevMan5"} (default),
 #'   \code{"JAMA"}, \code{"BMJ"}, or \code{"meta"}.
+#' @param prediction Logical; if \code{TRUE}, show prediction intervals.
+#'   Default is \code{FALSE}.
 #' @param save_as One of \code{"viewer"} (default), \code{"pdf"},
 #'   \code{"png"}, or \code{"tiff"}.
 #' @param filename Optional file path. If \code{NULL} and
@@ -36,6 +38,7 @@
 forest_influence <- function(object,
                              title = NULL,
                              layout = "RevMan5",
+                             prediction = FALSE,
                              save_as = c("viewer", "pdf", "png", "tiff"),
                              filename = NULL,
                              width = NULL,
@@ -44,77 +47,86 @@ forest_influence <- function(object,
   save_as <- match.arg(save_as)
 
   if (!inherits(object, c("meta_prop", "meta_ratio", "meta_mean"))) {
-    stop("Object must be of class meta_prop, meta_ratio, or meta_mean.",
+    stop(
+      "Object must be of class meta_prop, meta_ratio, or meta_mean.",
       call. = FALSE
     )
   }
 
-  infl_obj <- if (inherits(object, "meta_prop")) {
-    object$influence.meta
-  } else {
-    object$influence.analysis
-  }
+  infl_obj <- object$influence.meta
 
   if (is.null(infl_obj) || !inherits(infl_obj, "metainf")) {
-    stop("No valid influence analysis found. Ensure the object was created with default settings.",
+    stop(
+      "No valid influence analysis found. Ensure the object contains ",
+      "a raw 'metainf' object in $influence.meta.",
       call. = FALSE
     )
   }
 
   k <- length(infl_obj$studlab)
-  sizing <- .auto_plot_sizing(k,
-    height = height, width = width,
+  sizing <- .auto_plot_sizing(
+    k,
+    height = height,
+    width = width,
     type = "influence"
   )
   height <- sizing$height
   width <- sizing$width
   fontsize <- sizing$fontsize
 
-  # -- Device -------------------------------------------------------------------
   if (is.null(filename) && save_as != "viewer") {
-    ext <- switch(save_as,
+    ext <- switch(
+      save_as,
       pdf = "pdf",
       png = "png",
       tiff = "tiff"
     )
-    filename <- file.path(tempdir(), paste0(
-      "influence_plot_", format(Sys.time(), "%Y%m%d%H%M%S"), ".", ext
-    ))
+    filename <- file.path(
+      tempdir(),
+      paste0(
+        "influence_plot_",
+        format(Sys.time(), "%Y%m%d%H%M%S"),
+        ".",
+        ext
+      )
+    )
   }
 
-  if (save_as == "pdf") {
-    grDevices::pdf(filename, width = width, height = height)
-  } else if (save_as == "png") {
-    grDevices::png(filename,
-      width = width, height = height,
-      units = "in", res = 300
-    )
-  } else if (save_as == "tiff") {
-    tiff_args <- list(
-      filename = filename, width = width, height = height,
-      units = "in", res = 300
-    )
-    if (Sys.info()[["sysname"]] != "Darwin") {
-      tiff_args$compression <- "lzw"
-    }
-    do.call(grDevices::tiff, tiff_args)
+  .forest_open(save_as, filename, width, height)
+  if (save_as != "viewer") {
+    on.exit(grDevices::dev.off(), add = TRUE)
   }
-  if (save_as != "viewer") on.exit(grDevices::dev.off(), add = TRUE)
 
-  # -- Plot ---------------------------------------------------------------------
   is_prop <- inherits(object, "meta_prop")
   plot_title <- if (is.null(title)) {
     sprintf(
-      "Leave-one-out influence analysis - %s (k\u00a0=\u00a0%d)",
-      object$measure, k
+      "Leave-one-out influence analysis - %s (k = %d)",
+      object$measure,
+      k
     )
   } else {
     title
   }
 
+  # Temporary plotting copy:
+  # keep raw metainf object intact in the result, but suppress
+  # prediction intervals for plotting unless explicitly requested.
+  plot_obj <- infl_obj
+
+  if (!prediction) {
+    plot_obj$prediction <- FALSE
+    plot_obj$lower.predict <- rep(NA_real_, length(plot_obj$TE))
+    plot_obj$upper.predict <- rep(NA_real_, length(plot_obj$TE))
+    plot_obj$lower.predict.pooled <- NA_real_
+    plot_obj$upper.predict.pooled <- NA_real_
+    plot_obj$text.predict <- ""
+  }
+
   meta::forest(
-    x                 = infl_obj,
-    layout            = tolower(layout),
+    x                 = plot_obj,
+    layout            = layout,
+    prediction        = prediction,
+    print.pred        = prediction,
     smlab             = "Leave-One-Out Meta-Analysis",
     just.addcols      = "right",
     squaresize        = 0.5,
@@ -131,16 +143,21 @@ forest_influence <- function(object,
 
   .forest_add_title(plot_title)
 
-  # -- Close ---------------------------------------------------------------------
   if (save_as != "viewer") {
     message(sprintf(
       "Influence plot saved to: %s",
       normalizePath(filename, mustWork = FALSE)
     ))
   } else {
-    message("Influence plot displayed in Plots pane. Use save_as = 'pdf', 'png', or 'tiff' for publication-quality export.")
+    message(
+      "Influence plot displayed in Plots pane. Use save_as = 'pdf', ",
+      "'png', or 'tiff' for publication-quality export."
+    )
     if (k > 40) {
-      message("Tip: export to PDF/PNG for large plots \u2014 Viewer margins may clip rows.")
+      message(
+        "Tip: export to PDF/PNG for large plots - Viewer margins may ",
+        "clip rows."
+      )
     }
   }
 

@@ -40,26 +40,25 @@ table_influence <- function(object,
 
   if (!inherits(object, c("meta_prop", "meta_ratio", "meta_mean"))) {
     stop(
-      "Only supports meta_prop, meta_ratio, or meta_mean objects.",
+      "Object must be of class meta_prop, meta_ratio, or meta_mean.",
       call. = FALSE
     )
   }
 
-  infl <- if (inherits(object, "meta_prop")) {
-    object$influence.meta
-  } else {
-    object$influence.analysis
-  }
+  infl_obj <- object$influence.meta
 
-  if (!inherits(infl, "metainf")) {
+  if (is.null(infl_obj) || !inherits(infl_obj, "metainf")) {
     stop(
-      "No valid metainf object found. Run meta_ratio(), meta_mean(), or meta_prop() first.",
+      "No valid influence analysis found. Ensure the object contains ",
+      "a raw 'metainf' object in $influence.meta.",
       call. = FALSE
     )
   }
 
   required_fields <- c("studlab", "TE", "lower", "upper")
-  missing_fields <- required_fields[!vapply(required_fields, function(x) !is.null(infl[[x]]), logical(1))]
+  missing_fields <- required_fields[
+    !vapply(required_fields, function(x) !is.null(infl_obj[[x]]), logical(1))
+  ]
 
   if (length(missing_fields) > 0L) {
     stop(
@@ -71,11 +70,11 @@ table_influence <- function(object,
     )
   }
 
-  keep <- !is.na(infl$studlab) &
-    infl$studlab != " " &
-    !is.na(infl$TE) &
-    !is.na(infl$lower) &
-    !is.na(infl$upper)
+  keep <- !is.na(infl_obj$studlab) &
+    infl_obj$studlab != " " &
+    !is.na(infl_obj$TE) &
+    !is.na(infl_obj$lower) &
+    !is.na(infl_obj$upper)
 
   if (!any(keep)) {
     stop(
@@ -88,21 +87,21 @@ table_influence <- function(object,
   is_ratio <- inherits(object, "meta_ratio")
 
   if (is_prop) {
-    est <- round(.backtransform_prop(infl$TE[keep], object$sm) * 100, 2)
-    lower <- round(.backtransform_prop(infl$lower[keep], object$sm) * 100, 2)
-    upper <- round(.backtransform_prop(infl$upper[keep], object$sm) * 100, 2)
+    est <- round(.backtransform_prop(infl_obj$TE[keep], object$sm) * 100, 2)
+    lower <- round(.backtransform_prop(infl_obj$lower[keep], object$sm) * 100, 2)
+    upper <- round(.backtransform_prop(infl_obj$upper[keep], object$sm) * 100, 2)
   } else if (is_ratio) {
-    est <- round(exp(infl$TE[keep]), 2)
-    lower <- round(exp(infl$lower[keep]), 2)
-    upper <- round(exp(infl$upper[keep]), 2)
+    est <- round(exp(infl_obj$TE[keep]), 2)
+    lower <- round(exp(infl_obj$lower[keep]), 2)
+    upper <- round(exp(infl_obj$upper[keep]), 2)
   } else {
-    est <- round(infl$TE[keep], 2)
-    lower <- round(infl$lower[keep], 2)
-    upper <- round(infl$upper[keep], 2)
+    est <- round(infl_obj$TE[keep], 2)
+    lower <- round(infl_obj$lower[keep], 2)
+    upper <- round(infl_obj$upper[keep], 2)
   }
 
   df <- tibble::tibble(
-    Study = infl$studlab[keep],
+    Study = infl_obj$studlab[keep],
     `Estimate [95% CI]` = paste0(est, " [", lower, " \u2013 ", upper, "]")
   )
 
@@ -110,23 +109,23 @@ table_influence <- function(object,
   tau2_col <- "Tau\u00b2"
 
   if (isTRUE(include_heterogeneity)) {
-    if (!is.null(infl$I2)) {
-      df[[i2_col]] <- vapply(infl$I2[keep], .format_i2, numeric(1))
+    if (!is.null(infl_obj$I2)) {
+      df[[i2_col]] <- vapply(infl_obj$I2[keep], .format_i2, numeric(1))
     }
 
-    if (!is.null(infl$tau2)) {
-      df[[tau2_col]] <- round(infl$tau2[keep], 4)
+    if (!is.null(infl_obj$tau2)) {
+      df[[tau2_col]] <- round(infl_obj$tau2[keep], 4)
     }
   }
 
   col_label <- switch(object$measure,
-    Proportion = "Pooled Proportion (%)",
-    "Mean Difference" = "Mean Difference [95% CI]",
-    SMD = "SMD [95% CI]",
-    OR = "Odds Ratio [95% CI]",
-    RR = "Risk Ratio [95% CI]",
-    HR = "Hazard Ratio [95% CI]",
-    "Estimate [95% CI]"
+                      Proportion = "Pooled Proportion (%)",
+                      "Mean Difference" = "Mean Difference [95% CI]",
+                      SMD = "SMD [95% CI]",
+                      OR = "Odds Ratio [95% CI]",
+                      RR = "Risk Ratio [95% CI]",
+                      HR = "Hazard Ratio [95% CI]",
+                      "Estimate [95% CI]"
   )
 
   k <- nrow(df)
@@ -160,8 +159,8 @@ table_influence <- function(object,
   }
 
   ext <- switch(save_as,
-    docx = "docx",
-    pdf = "pdf"
+                docx = "docx",
+                pdf = "pdf"
   )
 
   if (is.null(filename)) {

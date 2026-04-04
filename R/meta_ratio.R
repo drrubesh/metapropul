@@ -96,9 +96,15 @@
 #' standard errors from the reported confidence intervals before fitting
 #' the model using \code{meta::metagen()}.
 #'
-#' Studies with non-finite log-transformed values are excluded with a
-#' warning when pre-computed effect sizes are used.
+#' When pre-computed effect sizes are used, studies with non-finite
+#' log-transformed values are excluded with a warning. This commonly
+#' occurs when odds ratios, risk ratios, or confidence intervals are not
+#' finite, for example because of zero cells or invalid bounds.
 #'
+#' Results from the raw-data and pre-computed effect-size paths may
+#' differ if zero-cell corrections were applied in the original study
+#' calculations or if raw event counts are analysed with continuity
+#' corrections internally by \pkg{meta}.
 #' @examples
 #' data(dat_bcg, package = "metapropul")
 #'
@@ -275,6 +281,12 @@ meta_ratio <- function(data,
       )
       keep <- setdiff(seq_len(nrow(data)), bad_idx)
       data <- data[keep, , drop = FALSE]
+      if (nrow(data) < 2L) {
+        stop(
+          "Fewer than 2 studies remain after excluding non-finite effect sizes.",
+          call. = FALSE
+        )
+      }
       study_labels <- study_labels[keep]
       subgroup_var <- if (!is.null(subgroup_var)) subgroup_var[keep] else NULL
       log_effect <- log_effect[keep]
@@ -343,10 +355,13 @@ meta_ratio <- function(data,
   # -- Influence analysis -------------------------------------------------------
   inf_random <- model == "random"
   inf_common <- model == "fixed"
-  influence <- tryCatch(
+
+  influence_obj <- tryCatch(
     {
-      inf <- meta::metainf(meta_result,
-        random = inf_random, common = inf_common
+      inf <- meta::metainf(
+        meta_result,
+        random = inf_random,
+        common = inf_common
       )
       inf$studlab <- make.unique(inf$studlab)
       inf
@@ -354,12 +369,27 @@ meta_ratio <- function(data,
     error = function(e) NULL
   )
 
+  influence_data <- if (!is.null(influence_obj)) {
+    tibble::tibble(
+      Study = influence_obj$studlab,
+      Estimate = round(exp(influence_obj$TE), 3),
+      lower = round(exp(influence_obj$lower), 3),
+      upper = round(exp(influence_obj$upper), 3),
+      p.value = round(influence_obj$pval, 4),
+      Tau2 = round(influence_obj$tau2, 4),
+      I2 = round(influence_obj$I2 * 100, 1)
+    )
+  } else {
+    NULL
+  }
+
   structure(
     list(
       meta                  = meta_result,
       table                 = tidy_tbl,
       meta.subgroup.summary = meta.subgroup.summary,
-      influence.analysis    = influence,
+      influence.analysis    = influence_data,
+      influence.meta        = influence_obj,
       model                 = model,
       measure               = measure,
       tau_method            = tau_method,

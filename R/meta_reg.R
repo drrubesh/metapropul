@@ -1,9 +1,14 @@
 #' Meta-regression
 #'
-#' Performs meta-regression on a fitted \code{meta_ratio}, \code{meta_mean},
-#' or \code{meta_prop} object using \code{metafor::rma()}.
+#' Performs meta-regression on a fitted \code{meta_ratio()},
+#' \code{meta_mean()}, or \code{meta_prop()} object using
+#' \code{metafor::rma()}.
+#'
 #' Coefficients are reported on the model scale and, where appropriate,
-#' on a back-transformed scale.
+#' moderator effects are additionally shown on a back-transformed scale.
+#' For ratio and proportion models, the intercept is not
+#' back-transformed by default because it is often not interpretable
+#' unless continuous moderators are centered.
 #'
 #' @param meta_object A fitted object from \code{meta_ratio()},
 #'   \code{meta_mean()}, or \code{meta_prop()}.
@@ -11,7 +16,8 @@
 #' @param moderators A formula specifying the moderators
 #'   (e.g. \code{~ age + region}).
 #' @param studylab Character string naming the study label column in
-#'   \code{data}. This is required so studies are matched safely by label.
+#'   \code{data}. This is required so studies are matched safely by
+#'   label.
 #'
 #' @return An object of class \code{"meta_reg"}.
 #'
@@ -27,7 +33,7 @@
 #' reg <- meta_reg(
 #'   meta_object = result,
 #'   data = dat_bcg,
-#'   moderators = ~ablat,
+#'   moderators = ~ ablat,
 #'   studylab = "author"
 #' )
 #' summary(reg)
@@ -42,7 +48,8 @@ meta_reg <- function(meta_object,
                      studylab) {
   if (!inherits(meta_object, c("meta_prop", "meta_ratio", "meta_mean"))) {
     stop(
-      "meta_object must be from meta_prop(), meta_ratio(), or meta_mean().",
+      "meta_object must be from meta_prop(), meta_ratio(), or ",
+      "meta_mean().",
       call. = FALSE
     )
   }
@@ -64,7 +71,8 @@ meta_reg <- function(meta_object,
 
   if (missing(studylab) || is.null(studylab) || !nzchar(studylab)) {
     stop(
-      "Provide 'studylab' to match studies safely between meta_object and data.",
+      "Provide 'studylab' to match studies safely between meta_object ",
+      "and data.",
       call. = FALSE
     )
   }
@@ -75,24 +83,33 @@ meta_reg <- function(meta_object,
 
   if (!requireNamespace("metafor", quietly = TRUE)) {
     stop(
-      "The 'metafor' package is required. Install with install.packages('metafor').",
+      "The 'metafor' package is required. Install with ",
+      "install.packages('metafor').",
       call. = FALSE
     )
   }
 
-  if (inherits(meta_object, "meta_prop") && !identical(meta_object$sm, "PLOGIT")) {
+  if (inherits(meta_object, "meta_prop") &&
+      !identical(meta_object$sm, "PLOGIT")) {
     stop(
-      "meta_reg() currently supports meta_prop objects only when sm = 'PLOGIT'.",
+      "meta_reg() currently supports meta_prop objects only when ",
+      "sm = 'PLOGIT'.",
       call. = FALSE
     )
   }
 
   meta_obj <- meta_object$meta
+
   if (!inherits(meta_obj, "meta")) {
-    stop("meta_object does not contain a valid 'meta' component.", call. = FALSE)
+    stop(
+      "meta_object does not contain a valid 'meta' component.",
+      call. = FALSE
+    )
   }
 
-  if (is.null(meta_obj$studlab) || is.null(meta_obj$TE) || is.null(meta_obj$seTE)) {
+  if (is.null(meta_obj$studlab) ||
+      is.null(meta_obj$TE) ||
+      is.null(meta_obj$seTE)) {
     stop(
       "meta_object$meta must contain 'studlab', 'TE', and 'seTE'.",
       call. = FALSE
@@ -101,7 +118,6 @@ meta_reg <- function(meta_object,
 
   meta_studies <- make.unique(as.character(meta_obj$studlab))
   data_labels <- make.unique(as.character(data[[studylab]]))
-
   matched_idx <- match(meta_studies, data_labels)
 
   if (anyNA(matched_idx)) {
@@ -117,7 +133,6 @@ meta_reg <- function(meta_object,
   }
 
   regression_data <- data[matched_idx, , drop = FALSE]
-
   mod_terms <- all.vars(moderators)
 
   if (length(mod_terms) == 0L) {
@@ -128,6 +143,7 @@ meta_reg <- function(meta_object,
   }
 
   missing_cols <- mod_terms[!mod_terms %in% names(regression_data)]
+
   if (length(missing_cols) > 0L) {
     stop(
       sprintf(
@@ -142,17 +158,19 @@ meta_reg <- function(meta_object,
   regression_data$vi <- meta_obj$seTE^2
   regression_data$.study_label_meta <- meta_studies
 
-  cc <- stats::complete.cases(regression_data[, mod_terms, drop = FALSE]) &
+  cc <- stats::complete.cases(
+    regression_data[, mod_terms, drop = FALSE]
+  ) &
     is.finite(regression_data$yi) &
     is.finite(regression_data$vi)
 
   n_excluded <- sum(!cc)
-
   excluded_studies <- regression_data$.study_label_meta[!cc]
 
   if (sum(cc) < 2L) {
     stop(
-      "Not enough complete studies available to fit meta-regression after exclusions.",
+      "Not enough complete studies available to fit meta-regression ",
+      "after exclusions.",
       call. = FALSE
     )
   }
@@ -160,8 +178,11 @@ meta_reg <- function(meta_object,
   if (n_excluded > 0L) {
     warning(
       paste0(
-        n_excluded, " stud", if (n_excluded == 1L) "y was" else "ies were",
-        " excluded due to missing moderator values or invalid model inputs: ",
+        n_excluded,
+        " stud",
+        if (n_excluded == 1L) "y was" else "ies were",
+        " excluded due to missing moderator values or invalid model ",
+        "inputs: ",
         paste(excluded_studies, collapse = ", ")
       ),
       call. = FALSE
@@ -195,33 +216,47 @@ meta_reg <- function(meta_object,
   est_raw <- as.numeric(reg_model$beta)
   ci_lb_raw <- reg_model$ci.lb
   ci_ub_raw <- reg_model$ci.ub
+  term_names <- rownames(reg_model$beta)
+
+  is_intercept <- term_names == "intrcpt"
+
+  est_bt <- rep(NA_real_, length(est_raw))
+  ci_lb_bt <- rep(NA_real_, length(est_raw))
+  ci_ub_bt <- rep(NA_real_, length(est_raw))
 
   if (is_ratio) {
-    est_bt <- round(exp(est_raw), 3)
-    ci_lb_bt <- round(exp(ci_lb_raw), 3)
-    ci_ub_bt <- round(exp(ci_ub_raw), 3)
-    bt_label <- paste0(measure, " (back-transformed)")
+    est_bt[!is_intercept] <- round(exp(est_raw[!is_intercept]), 3)
+    ci_lb_bt[!is_intercept] <- round(exp(ci_lb_raw[!is_intercept]), 3)
+    ci_ub_bt[!is_intercept] <- round(exp(ci_ub_raw[!is_intercept]), 3)
+    bt_label <- paste0(measure, " scale")
   } else if (is_prop) {
-    est_bt <- round(.backtransform_prop(est_raw, meta_object$sm) * 100, 2)
-    ci_lb_bt <- round(.backtransform_prop(ci_lb_raw, meta_object$sm) * 100, 2)
-    ci_ub_bt <- round(.backtransform_prop(ci_ub_raw, meta_object$sm) * 100, 2)
+    est_bt[!is_intercept] <- round(
+      .backtransform_prop(est_raw[!is_intercept], meta_object$sm) * 100,
+      2
+    )
+    ci_lb_bt[!is_intercept] <- round(
+      .backtransform_prop(ci_lb_raw[!is_intercept], meta_object$sm) * 100,
+      2
+    )
+    ci_ub_bt[!is_intercept] <- round(
+      .backtransform_prop(ci_ub_raw[!is_intercept], meta_object$sm) * 100,
+      2
+    )
     bt_label <- "Proportion (%)"
   } else {
-    est_bt <- NA_real_
-    ci_lb_bt <- NA_real_
-    ci_ub_bt <- NA_real_
     bt_label <- NA_character_
   }
 
   tidy_tbl <- tibble::tibble(
-    Term = rownames(reg_model$beta),
+    Term = term_names,
     Estimate = round(est_raw, 4),
     CI.Lower = round(ci_lb_raw, 4),
     CI.Upper = round(ci_ub_raw, 4),
     p.value = reg_model$pval,
     Estimate_bt = est_bt,
     CI.Lower_bt = ci_lb_bt,
-    CI.Upper_bt = ci_ub_bt
+    CI.Upper_bt = ci_ub_bt,
+    backtransformable = !is_intercept
   )
 
   attr(tidy_tbl, "bt_label") <- bt_label
@@ -232,6 +267,7 @@ meta_reg <- function(meta_object,
     R2_analog = r2_analog,
     QE_pval = reg_model$QEp,
     QM = as.numeric(reg_model$QM),
+    QM_pval = reg_model$QMp,
     k_included = reg_model$k,
     k_excluded = n_excluded
   )

@@ -16,16 +16,23 @@ meta_reg(meta_object, data, moderators, studylab)
 (e.g. \code{~ age + region}).}
 
 \item{studylab}{Character string naming the study label column in
-\code{data}. This is required so studies are matched safely by label.}
+\code{data}. This is required so studies are matched safely by
+label.}
 }
 \value{
 An object of class \code{"meta_reg"}.
 }
 \description{
-Performs meta-regression on a fitted \code{meta_ratio}, \code{meta_mean},
-or \code{meta_prop} object using \code{metafor::rma()}.
+Performs meta-regression on a fitted \code{meta_ratio()},
+\code{meta_mean()}, or \code{meta_prop()} object using
+\code{metafor::rma()}.
+}
+\details{
 Coefficients are reported on the model scale and, where appropriate,
-on a back-transformed scale.
+moderator effects are additionally shown on a back-transformed scale.
+For ratio and proportion models, the intercept is not
+back-transformed by default because it is often not interpretable
+unless continuous moderators are centered.
 }
 \examples{
 \donttest{
@@ -39,7 +46,7 @@ result <- meta_prop(
 reg <- meta_reg(
   meta_object = result,
   data = dat_bcg,
-  moderators = ~ablat,
+  moderators = ~ ablat,
   studylab = "author"
 )
 summary(reg)

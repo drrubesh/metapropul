@@ -57,33 +57,39 @@ plot_heterogeneity <- function(object,
     )
   }
 
-  infl_obj <- if (inherits(object, "meta_prop")) {
-    object$influence.meta
-  } else {
-    object$influence.analysis
-  }
+  infl_obj <- object$influence.meta
 
   if (is.null(infl_obj) || !inherits(infl_obj, "metainf")) {
     stop(
-      "No valid leave-one-out object found for plotting heterogeneity.",
+      "No valid leave-one-out object found in $influence.meta for plotting ",
+      "heterogeneity.",
       call. = FALSE
     )
   }
 
   if (is.null(infl_obj$studlab)) {
-    stop("Study labels are missing from the leave-one-out object.", call. = FALSE)
+    stop(
+      "Study labels are missing from the leave-one-out object.",
+      call. = FALSE
+    )
   }
 
   study_labels <- infl_obj$studlab
 
   if (identical(stat, "I2")) {
     if (is.null(infl_obj$I2)) {
-      stop("I2 values are not available in the leave-one-out object.", call. = FALSE)
+      stop(
+        "I2 values are not available in the leave-one-out object.",
+        call. = FALSE
+      )
     }
     het_vals <- vapply(infl_obj$I2, .format_i2, numeric(1))
   } else {
     if (is.null(infl_obj$tau2)) {
-      stop("Tau2 values are not available in the leave-one-out object.", call. = FALSE)
+      stop(
+        "Tau2 values are not available in the leave-one-out object.",
+        call. = FALSE
+      )
     }
     het_vals <- infl_obj$tau2
   }
@@ -122,7 +128,8 @@ plot_heterogeneity <- function(object,
 
   if (!identical(save_as, "viewer")) {
     if (is.null(filename)) {
-      ext <- switch(save_as,
+      ext <- switch(
+        save_as,
         pdf = "pdf",
         png = "png",
         tiff = "tiff"
@@ -184,7 +191,11 @@ plot_heterogeneity <- function(object,
     lwd = 2,
     main = plot_title,
     xlab = "Study omitted",
-    ylab = if (identical(stat, "I2")) expression(I^2 ~ "(%)") else expression(tau^2),
+    ylab = if (identical(stat, "I2")) {
+      expression(I^2 ~ "(%)")
+    } else {
+      expression(tau^2)
+    },
     xaxt = "n",
     ylim = ylim_use,
     cex.main = 0.85,

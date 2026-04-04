@@ -61,25 +61,45 @@
   cat(sprintf("Number of studies: %d\n", meta_result$k))
 
   if (type != "prop" && all(c("n.e", "n.c") %in% names(meta_result))) {
-    n_exp <- sum(meta_result$n.e, na.rm = TRUE)
-    n_con <- sum(meta_result$n.c, na.rm = TRUE)
-    total_n <- n_exp + n_con
+    has_group_totals <- !is.null(meta_result$n.e) &&
+      !is.null(meta_result$n.c) &&
+      length(meta_result$n.e) > 0L &&
+      length(meta_result$n.c) > 0L &&
+      any(!is.na(meta_result$n.e)) &&
+      any(!is.na(meta_result$n.c))
 
-    cat(sprintf(
-      "Total observations: %s (%s experimental, %s control)\n",
-      formatC(total_n, format = "d", big.mark = ","),
-      formatC(n_exp, format = "d", big.mark = ","),
-      formatC(n_con, format = "d", big.mark = ",")
-    ))
-
-    if (!is.null(meta_result$event.e) && !is.null(meta_result$event.c)) {
-      ev_exp <- sum(meta_result$event.e, na.rm = TRUE)
-      ev_con <- sum(meta_result$event.c, na.rm = TRUE)
+    if (isTRUE(has_group_totals)) {
+      n_exp <- sum(meta_result$n.e, na.rm = TRUE)
+      n_con <- sum(meta_result$n.c, na.rm = TRUE)
+      total_n <- n_exp + n_con
 
       cat(sprintf(
-        "Total events: %s\n",
-        formatC(ev_exp + ev_con, format = "d", big.mark = ",")
+        "Total observations: %s (%s experimental, %s control)\n",
+        formatC(total_n, format = "d", big.mark = ","),
+        formatC(n_exp, format = "d", big.mark = ","),
+        formatC(n_con, format = "d", big.mark = ",")
       ))
+
+      has_event_totals <- !is.null(meta_result$event.e) &&
+        !is.null(meta_result$event.c) &&
+        length(meta_result$event.e) > 0L &&
+        length(meta_result$event.c) > 0L &&
+        any(!is.na(meta_result$event.e)) &&
+        any(!is.na(meta_result$event.c))
+
+      if (isTRUE(has_event_totals)) {
+        ev_exp <- sum(meta_result$event.e, na.rm = TRUE)
+        ev_con <- sum(meta_result$event.c, na.rm = TRUE)
+
+        cat(sprintf(
+          "Total events: %s\n",
+          formatC(ev_exp + ev_con, format = "d", big.mark = ",")
+        ))
+      }
+    } else {
+      cat(
+        "Total observations: not available from pre-computed effect sizes\n"
+      )
     }
   }
 
@@ -367,6 +387,7 @@ print.meta_prop <- function(x, ...) {
   summary(x, ...)
 }
 
+
 #' @export
 summary.meta_reg <- function(object, ...) {
   cat("\nMeta-regression Summary\n")
@@ -382,8 +403,8 @@ summary.meta_reg <- function(object, ...) {
   }
   print(ms)
 
-  cat("\nCoefficients (model scale + back-transformed):\n")
-  cat("-----------------------------------------------\n")
+  cat("\nCoefficients (model scale):\n")
+  cat("---------------------------\n")
 
   tbl <- object$table
   bt_label <- attr(tbl, "bt_label")
@@ -392,33 +413,41 @@ summary.meta_reg <- function(object, ...) {
     tbl[, c("Term", "Estimate", "CI.Lower", "CI.Upper", "p.value")]
   ))
 
-  if (!is.null(bt_label) && !is.na(bt_label)) {
-    cat(sprintf("\nBack-transformed (%s):\n", bt_label))
-    bt_tbl <- tbl[, c("Term", "Estimate_bt", "CI.Lower_bt", "CI.Upper_bt")]
+  show_bt <- !is.null(bt_label) &&
+    !is.na(bt_label) &&
+    any(tbl$backtransformable, na.rm = TRUE)
+
+  if (isTRUE(show_bt)) {
+    cat(sprintf("\nModerator effects on %s:\n", bt_label))
+    cat("--------------------------------\n")
+
+    bt_tbl <- tbl[tbl$backtransformable, , drop = FALSE]
+    bt_tbl <- bt_tbl[, c("Term", "Estimate_bt", "CI.Lower_bt", "CI.Upper_bt")]
     names(bt_tbl) <- c("Term", "Estimate", "CI.Lower", "CI.Upper")
     print(as.data.frame(bt_tbl))
   }
 
-  scale_note <- switch(object$measure,
+  scale_note <- switch(
+    object$measure,
     "OR" = paste(
       "- Model-scale estimates are log odds ratios.",
-      "Use exp() to obtain odds ratios."
+      "Moderator effects are back-transformed to the OR scale."
     ),
     "RR" = paste(
       "- Model-scale estimates are log risk ratios.",
-      "Use exp() to obtain risk ratios."
+      "Moderator effects are back-transformed to the RR scale."
     ),
     "HR" = paste(
       "- Model-scale estimates are log hazard ratios.",
-      "Use exp() to obtain hazard ratios."
+      "Moderator effects are back-transformed to the HR scale."
     ),
     "MD" = "- Estimates are on the mean difference scale.",
     "SMD" = "- Estimates are on the standardised mean difference scale.",
     "Proportion" = if (!is.null(object$sm) &&
-      identical(object$sm, "PLOGIT")) {
+                       identical(object$sm, "PLOGIT")) {
       paste(
-        "- Model-scale estimates are on the logit scale and are",
-        "back-transformed to percentages."
+        "- Model-scale estimates are on the logit scale.",
+        "Moderator effects are back-transformed to percentages."
       )
     } else {
       paste(
@@ -430,15 +459,23 @@ summary.meta_reg <- function(object, ...) {
   )
 
   r2 <- object$r2_analog
+  tau2_null <- object$meta.summary$tau2_null
+  tau2_model <- object$meta.summary$tau2
+
   r2_note <- if (is.null(r2) || is.na(r2)) {
     paste(
       "- R\u00b2 analog is not meaningful because heterogeneity",
       "in the null model was near zero."
     )
+  } else if (r2 <= 0 && tau2_model > tau2_null) {
+    paste(
+      "- R\u00b2 analog = 0%: moderators did not reduce between-study",
+      "variance. Residual heterogeneity was larger than in the null model."
+    )
   } else if (r2 <= 0) {
-    paste0(
-      "- R\u00b2 analog = 0%: moderators explain none of the ",
-      "between-study variance."
+    paste(
+      "- R\u00b2 analog = 0%: moderators did not reduce between-study",
+      "variance."
     )
   } else if (r2 < 25) {
     paste0(
@@ -459,11 +496,21 @@ summary.meta_reg <- function(object, ...) {
 
   .cat_section("Notes")
   .cat_note(scale_note)
-  .cat_note(r2_note)
-  .cat_note("- QE tests residual heterogeneity after moderators.")
   .cat_note(
-    "- QM is the omnibus test for whether moderators jointly explain ",
-    "heterogeneity."
+    "- The intercept is not back-transformed because it is often not ",
+    "interpretable unless continuous moderators are centered."
+  )
+  .cat_note(
+    "- In models with interactions or uncentered continuous moderators, ",
+    "some coefficient-based back-transformations may be difficult to ",
+    "interpret because they depend on reference values of other moderators."
+  )
+  .cat_note(r2_note)
+  .cat_note(
+    "- QE tests residual heterogeneity after accounting for moderators."
+  )
+  .cat_note(
+    "- QM tests whether moderators jointly explain heterogeneity."
   )
   .cat_note("- Use object$meta to access the full rma() model.")
 

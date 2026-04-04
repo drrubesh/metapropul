@@ -8,6 +8,8 @@ forest_cumulative(
   object,
   title = NULL,
   layout = "RevMan5",
+  prediction = FALSE,
+  overall = TRUE,
   save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = NULL,

@@ -42,7 +42,10 @@ Imports:
     tidyselect,
     graphics,
     grDevices,
-    stats
+    stats,
+    ggplot2,
+    tidyr,
+    scales
 Suggests:
     testthat (>= 3.0.0),
     knitr,

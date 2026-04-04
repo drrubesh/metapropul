@@ -123,8 +123,15 @@ supplied, the function log-transforms the estimates and derives
 standard errors from the reported confidence intervals before fitting
 the model using \code{meta::metagen()}.
 
-Studies with non-finite log-transformed values are excluded with a
-warning when pre-computed effect sizes are used.
+When pre-computed effect sizes are used, studies with non-finite
+log-transformed values are excluded with a warning. This commonly
+occurs when odds ratios, risk ratios, or confidence intervals are not
+finite, for example because of zero cells or invalid bounds.
+
+Results from the raw-data and pre-computed effect-size paths may
+differ if zero-cell corrections were applied in the original study
+calculations or if raw event counts are analysed with continuity
+corrections internally by \pkg{meta}.
 }
 \examples{
 data(dat_bcg, package = "metapropul")

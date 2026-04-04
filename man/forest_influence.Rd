@@ -8,6 +8,7 @@ forest_influence(
   object,
   title = NULL,
   layout = "RevMan5",
+  prediction = FALSE,
   save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
   width = NULL,
@@ -25,6 +26,9 @@ object.}
 
 \item{layout}{Layout style. One of \code{"RevMan5"} (default),
 \code{"JAMA"}, \code{"BMJ"}, or \code{"meta"}.}
+
+\item{prediction}{Logical; if \code{TRUE}, show prediction intervals.
+Default is \code{FALSE}.}
 
 \item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
 \code{"png"}, or \code{"tiff"}.}

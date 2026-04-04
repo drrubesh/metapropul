@@ -47,6 +47,8 @@
 forest_cumulative <- function(object,
                               title = NULL,
                               layout = "RevMan5",
+                              prediction = FALSE,
+                              overall = TRUE,
                               save_as = c("viewer", "pdf", "png", "tiff"),
                               filename = NULL,
                               width = NULL,
@@ -108,11 +110,13 @@ forest_cumulative <- function(object,
   }
 
   forest_args <- list(
-    x        = cum_obj,
-    layout   = tolower(layout),
-    fontsize = fontsize,
-    xlab     = if (is_prop) "Proportion (%)" else NULL,
-    pscale   = if (is_prop) 100 else 1
+    x          = cum_obj,
+    prediction = prediction,
+    overall    = overall,
+    layout     = layout,
+    fontsize   = fontsize,
+    xlab       = if (is_prop) "Proportion (%)" else NULL,
+    pscale     = if (is_prop) 100 else 1
   )
   do.call(meta::forest, c(forest_args, list(...)))
 
