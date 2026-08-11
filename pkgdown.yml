@@ -1,0 +1,15 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  case-additional-models: case-additional-models.html
+  case-mean-appraisal: case-mean-appraisal.html
+  case-proportion-regression: case-proportion-regression.html
+  case-ratio-bcg: case-ratio-bcg.html
+  input-data-formats: input-data-formats.html
+  metapropul-intro: metapropul-intro.html
+  umbrella-reviews: umbrella-reviews.html
+last_built: 2026-08-11T09:46Z
+urls:
+  reference: https://drrubesh.github.io/metapropul/reference
+  article: https://drrubesh.github.io/metapropul/articles
