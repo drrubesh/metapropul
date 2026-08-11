@@ -5,6 +5,40 @@ suppressPackageStartupMessages({
   library(metapropul)
 })
 
+skip_if_no_chrome <- function() {
+  testthat::skip_if_not_installed("webshot2")
+  available <- tryCatch({
+    session <- chromote::ChromoteSession$new()
+    session$close()
+    TRUE
+  }, error = function(e) FALSE)
+  testthat::skip_if_not(available, "A runnable Chrome installation is required")
+}
+
+# Shared datasets intentionally contain repeated citation labels. Test fixtures
+# preserve every row and make those labels unique without emitting warnings when
+# pkgload sources this helper during devtools::load_all(). The PFT fixture also
+# deliberately exercises a discouraged transformation; its known advisory is
+# silenced here and tested explicitly elsewhere.
+.fixture_meta_ratio <- function(...) {
+  meta_ratio(..., duplicate_action = "make_unique")
+}
+
+.fixture_meta_mean <- function(...) {
+  meta_mean(..., duplicate_action = "make_unique")
+}
+
+.fixture_meta_prop <- function(...) {
+  withCallingHandlers(
+    meta_prop(..., duplicate_action = "make_unique"),
+    warning = function(w) {
+      if (startsWith(conditionMessage(w), "Freeman-Tukey back-transformation")) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
+
 # ── Load datasets ─────────────────────────────────────────────────────────────
 data(dat_bcg, package = "metapropul")
 data(Olkin95, package = "metapropul")
@@ -23,7 +57,7 @@ dat_bcg$ncon <- dat_bcg$cpos + dat_bcg$cneg
 
 # ── Ratio fixtures ────────────────────────────────────────────────────────────
 
-.fix_ratio_events <- meta_ratio(
+.fix_ratio_events <- .fixture_meta_ratio(
   data     = dat_bcg,
   event.e  = "tpos", n.e = "npos",
   event.c  = "cpos", n.c = "ncon",
@@ -31,7 +65,7 @@ dat_bcg$ncon <- dat_bcg$cpos + dat_bcg$cneg
   measure  = "OR"
 )
 
-.fix_ratio_fixed <- meta_ratio(
+.fix_ratio_fixed <- .fixture_meta_ratio(
   data     = dat_bcg,
   event.e  = "tpos", n.e = "npos",
   event.c  = "cpos", n.c = "ncon",
@@ -40,7 +74,7 @@ dat_bcg$ncon <- dat_bcg$cpos + dat_bcg$cneg
   model    = "fixed"
 )
 
-.fix_ratio_rr <- meta_ratio(
+.fix_ratio_rr <- .fixture_meta_ratio(
   data     = dat_bcg,
   event.e  = "tpos", n.e = "npos",
   event.c  = "cpos", n.c = "ncon",
@@ -62,14 +96,14 @@ bcg_clean <- dat_bcg[
     is.finite(log(dat_bcg$or_hi)),
 ]
 
-.fix_ratio_precomp <- meta_ratio(
+.fix_ratio_precomp <- .fixture_meta_ratio(
   data = bcg_clean,
   effect = "or_est", lower = "or_lo", upper = "or_hi",
   studylab = "author",
   measure = "OR"
 )
 
-.fix_ratio_subgroup <- meta_ratio(
+.fix_ratio_subgroup <- .fixture_meta_ratio(
   data     = dat_bcg,
   event.e  = "tpos", n.e = "npos",
   event.c  = "cpos", n.c = "ncon",
@@ -79,7 +113,7 @@ bcg_clean <- dat_bcg[
 )
 
 # Large k=70 (Olkin95) — triggers k>30 metagen path
-.fix_ratio_large <- meta_ratio(
+.fix_ratio_large <- .fixture_meta_ratio(
   data     = Olkin95,
   event.e  = "event.e", n.e = "n.e",
   event.c  = "event.c", n.c = "n.c",
@@ -89,7 +123,7 @@ bcg_clean <- dat_bcg[
 
 # ── Mean fixtures ─────────────────────────────────────────────────────────────
 
-.fix_mean <- meta_mean(
+.fix_mean <- .fixture_meta_mean(
   data     = dat_normand1999,
   mean.e   = "m1i", sd.e = "sd1i", n.e = "n1i",
   mean.c   = "m2i", sd.c = "sd2i", n.c = "n2i",
@@ -97,7 +131,7 @@ bcg_clean <- dat_bcg[
   measure  = "MD"
 )
 
-.fix_mean_smd <- meta_mean(
+.fix_mean_smd <- .fixture_meta_mean(
   data     = dat_normand1999,
   mean.e   = "m1i", sd.e = "sd1i", n.e = "n1i",
   mean.c   = "m2i", sd.c = "sd2i", n.c = "n2i",
@@ -105,7 +139,7 @@ bcg_clean <- dat_bcg[
   measure  = "SMD"
 )
 
-.fix_mean_fixed <- meta_mean(
+.fix_mean_fixed <- .fixture_meta_mean(
   data     = dat_normand1999,
   mean.e   = "m1i", sd.e = "sd1i", n.e = "n1i",
   mean.c   = "m2i", sd.c = "sd2i", n.c = "n2i",
@@ -120,7 +154,7 @@ dat_normand1999$se_md <- sqrt(dat_normand1999$sd1i^2 / dat_normand1999$n1i +
 dat_normand1999$md_lo <- dat_normand1999$md - 1.96 * dat_normand1999$se_md
 dat_normand1999$md_hi <- dat_normand1999$md + 1.96 * dat_normand1999$se_md
 
-.fix_mean_precomp <- meta_mean(
+.fix_mean_precomp <- .fixture_meta_mean(
   data = dat_normand1999,
   effect = "md", lower = "md_lo", upper = "md_hi",
   studylab = "source"
@@ -129,7 +163,7 @@ dat_normand1999$md_hi <- dat_normand1999$md + 1.96 * dat_normand1999$se_md
 # Subgroup — split by row parity for structural testing
 dat_normand1999$grp <- rep(c("A", "B"), length.out = nrow(dat_normand1999))
 
-.fix_mean_subgroup <- meta_mean(
+.fix_mean_subgroup <- .fixture_meta_mean(
   data     = dat_normand1999,
   mean.e   = "m1i", sd.e = "sd1i", n.e = "n1i",
   mean.c   = "m2i", sd.c = "sd2i", n.c = "n2i",
@@ -139,14 +173,14 @@ dat_normand1999$grp <- rep(c("A", "B"), length.out = nrow(dat_normand1999))
 
 # ── Proportion fixtures ───────────────────────────────────────────────────────
 
-.fix_prop <- meta_prop(
+.fix_prop <- .fixture_meta_prop(
   data     = dat_bcg,
   event    = "tpos",
   n        = "npos",
   studylab = "author"
 )
 
-.fix_prop_fixed <- meta_prop(
+.fix_prop_fixed <- .fixture_meta_prop(
   data     = dat_bcg,
   event    = "tpos",
   n        = "npos",
@@ -154,7 +188,7 @@ dat_normand1999$grp <- rep(c("A", "B"), length.out = nrow(dat_normand1999))
   model    = "fixed"
 )
 
-.fix_prop_pft <- meta_prop(
+.fix_prop_pft <- .fixture_meta_prop(
   data     = dat_bcg,
   event    = "tpos",
   n        = "npos",
@@ -162,7 +196,7 @@ dat_normand1999$grp <- rep(c("A", "B"), length.out = nrow(dat_normand1999))
   sm       = "PFT"
 )
 
-.fix_prop_subgroup <- meta_prop(
+.fix_prop_subgroup <- .fixture_meta_prop(
   data     = dat_bcg,
   event    = "tpos",
   n        = "npos",
@@ -170,7 +204,7 @@ dat_normand1999$grp <- rep(c("A", "B"), length.out = nrow(dat_normand1999))
   subgroup = "alloc"
 )
 
-.fix_prop_no_pi <- meta_prop(
+.fix_prop_no_pi <- .fixture_meta_prop(
   data                = dat_bcg,
   event               = "tpos",
   n                   = "npos",
@@ -184,19 +218,22 @@ dat_normand1999$grp <- rep(c("A", "B"), length.out = nrow(dat_normand1999))
   meta_object = .fix_prop,
   data        = dat_bcg,
   moderators  = ~ablat,
-  studylab    = "author"
+  studylab    = "author",
+  min_studies_per_parameter = 5
 )
 
 .fix_reg_mean <- meta_reg(
   meta_object = .fix_mean,
   data        = dat_normand1999,
   moderators  = ~n1i,
-  studylab    = "source"
+  studylab    = "source",
+  min_studies_per_parameter = 5
 )
 
 .fix_reg_ratio <- meta_reg(
   meta_object = .fix_ratio_events,
   data        = dat_bcg,
   moderators  = ~ablat,
-  studylab    = "author"
+  studylab    = "author",
+  min_studies_per_parameter = 5
 )

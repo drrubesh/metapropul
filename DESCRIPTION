@@ -18,19 +18,22 @@ Authors@R: c(
   )
 Description: A practical toolkit for systematic reviewers conducting
     meta-analyses of proportions, risk ratios, odds ratios, hazard ratios,
-    and mean differences. Designed to reduce the gap between statistical
+    mean differences, correlations, generic inverse-variance effects, and
+    incidence rates. Designed to reduce the gap between statistical
     analysis and publication-ready reporting, the package provides a unified
     interface for model fitting, subgroup analysis, meta-regression,
-    leave-one-out influence diagnostics, and heterogeneity assessment.
+    leave-one-out influence diagnostics, heterogeneity assessment, and
+    non-pooling umbrella-review synthesis with primary-study overlap analysis.
     Outputs include formatted summary tables via 'gt', automatically scaled
     forest plots, cumulative forest plots, and comprehensive publication bias
     assessment (Egger and Begg tests, trim-and-fill, contour-enhanced funnel
     plots, limit meta-analysis, and DOI plots).
 License: MIT + file LICENSE
+URL: https://github.com/drrubesh/metapropul
+BugReports: https://github.com/drrubesh/metapropul/issues
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Depends: R (>= 4.1.0)
 Imports:
     meta (>= 6.0-0),
@@ -42,14 +45,24 @@ Imports:
     tidyselect,
     graphics,
     grDevices,
+    grid,
     stats,
     ggplot2,
     tidyr,
     scales
 Suggests:
+    bslib (>= 0.6.0),
+    readxl (>= 1.4.0),
+    shiny (>= 1.8.0),
     testthat (>= 3.0.0),
     knitr,
     rmarkdown,
     bookdown,
-    pkgdown
+    pkgdown,
+    webshot2,
+    chromote,
+    spelling
+VignetteBuilder: knitr
 Config/testthat/edition: 3
+Config/roxygen2/version: 8.1.0
+Language: en-GB

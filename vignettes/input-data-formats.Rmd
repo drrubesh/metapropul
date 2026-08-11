@@ -1,0 +1,147 @@
+---
+title: "Preparing CSV and Excel data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Preparing CSV and Excel data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+`metapropul` expects one row per independent study or comparison. CSV and Excel
+headers can use any names: function arguments and the graphical interface map
+your headers to their statistical roles. Numeric analysis columns must contain
+numbers rather than formatted strings such as `"12%"` or `"1,250"`.
+
+The optional `study` column identifies studies and the optional `subgroup`
+column identifies a completely observed subgroup. Merely having a subgroup
+column in the file does not request subgroup analysis: `subgroup = NULL` is the
+function default, and the GUI always starts at **None**. Select a subgroup only
+when it is scientifically intended. Avoid duplicate study labels where
+possible. The GUI shows the required headers for the selected analysis and
+provides a downloadable CSV template.
+
+## Ratio outcomes: OR, RR, and HR
+
+Odds ratios and risk ratios can be calculated from a 2 by 2 table:
+
+| study | event_e | n_e | event_c | n_c | subgroup |
+|:--|--:|--:|--:|--:|:--|
+| Study 1 | 12 | 100 | 20 | 100 | Europe |
+| Study 2 | 8 | 80 | 15 | 75 | Asia |
+
+```{r, eval=FALSE}
+meta_ratio(dat, "event_e", "n_e", "event_c", "n_c",
+  studylab = "study", subgroup = "subgroup", measure = "OR")
+```
+
+Reported OR, RR, or HR values can be supplied with confidence limits. These
+three columns are on the ordinary ratio scale and must be positive:
+
+| study | effect | lower | upper |
+|:--|--:|--:|--:|
+| Study 1 | 0.72 | 0.51 | 1.02 |
+| Study 2 | 1.18 | 0.88 | 1.58 |
+
+```{r, eval=FALSE}
+meta_ratio(dat, effect = "effect", lower = "lower", upper = "upper",
+  studylab = "study", measure = "HR")
+```
+
+Log OR, log RR, or log HR may instead be supplied with its standard error:
+
+| study | log_effect | se |
+|:--|--:|--:|
+| Study 1 | -0.329 | 0.177 |
+| Study 2 | 0.165 | 0.150 |
+
+```{r, eval=FALSE}
+meta_ratio(dat, effect = "log_effect", se = "se", effect_scale = "log",
+  studylab = "study", measure = "HR")
+```
+
+Hazard ratios cannot be reconstructed from simple event totals; use one of the
+two pre-computed formats. Do not enter a ratio as `effect` when
+`effect_scale = "log"`.
+
+## Continuous outcomes
+
+Raw MD or SMD analysis requires both group summaries:
+
+| study | mean_e | sd_e | n_e | mean_c | sd_c | n_c |
+|:--|--:|--:|--:|--:|--:|--:|
+| Study 1 | 12.1 | 3.2 | 60 | 14.0 | 3.5 | 58 |
+| Study 2 | 10.8 | 2.9 | 45 | 12.2 | 3.1 | 47 |
+
+Alternatively, use `effect`, `lower`, and `upper` for a reported MD or SMD.
+Use `meta_generic()` for a continuous effect supplied with an SE or variance.
+
+## Proportions
+
+Provide event counts and total sample sizes. Each event count must lie between
+zero and its corresponding total:
+
+| study | event | n | subgroup |
+|:--|--:|--:|:--|
+| Study 1 | 18 | 200 | Hospital |
+| Study 2 | 7 | 95 | Community |
+
+## Generic inverse-variance effects
+
+Provide `effect` plus exactly one of `se`, `variance`, or the pair `lower` and
+`upper`. Effects stay on their analysis scale. For a log ratio and SE, choose
+`backtransform = "exp"`; for an untransformed estimate choose `"identity"`.
+
+## Correlations and incidence rates
+
+Correlation analysis requires `cor` and `n`; correlations must be strictly
+between -1 and 1 and `n` must exceed 3. Incidence-rate analysis requires
+non-negative `event` and positive `person_time` columns.
+
+## Risk-of-bias files
+
+Use one row per study, one study-label column, and one column per ROB domain.
+Labels must match the fitted meta-analysis exactly when creating a combined
+forest and ROB figure. Judgements must use the levels of the selected tool, for
+example `Low`, `Some concerns`, and `High` for a generic three-level tool.
+
+## Meta-regression prediction files
+
+Fit meta-regression using moderator columns in the primary study dataset. A
+prediction file contains only the moderator combinations to estimate: its
+headers and data types must match the moderators used in the model. Do not add
+effect estimates or standard errors. The GUI creates a template from the
+fitted model so categorical levels and numeric columns are preserved.
+
+## Umbrella-review results
+
+Use one row per reported meta-analysis result. Required columns are `outcome`,
+`review`, `effect`, `lower`, and `upper`. Useful optional columns include
+`measure`, `studies`, `participants`, `i2`, `p_value`, `year`, `quality`, and
+`certainty`. Each row remains a separate reported synthesis; metapropul does
+not pool rows across reviews.
+
+## Primary-study overlap (CCA)
+
+CCA input is long-format membership data:
+
+| review | primary_study | outcome | included |
+|:--|:--|:--|:--|
+| Review A | Study 1 | Mortality | TRUE |
+| Review A | Study 2 | Mortality | TRUE |
+| Review B | Study 1 | Mortality | TRUE |
+
+`review` and `primary_study` are required. `outcome` and `included` are
+optional. An inclusion indicator may contain only `TRUE`/`FALSE`, `1`/`0`, or
+`NA`; `NA` means that the review--study cell is structurally unavailable.
+
+## Primary-study diagnostics within reviews
+
+Use one row per primary-study estimate with `outcome`, `review`,
+`primary_study`, `effect`, `lower`, and `upper`; participant count is optional.
+Every outcome--review group needs at least two unique primary studies. These
+data are diagnosed within each source review and are never pooled across
+reviews.

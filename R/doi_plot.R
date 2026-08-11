@@ -7,9 +7,8 @@
 #'
 #' @param object A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 #'   object.
-#' @param title Optional character string for the plot title. If \code{NULL}
-#'   (default), an auto-constructed title is used. Set to \code{""} to
-#'   suppress.
+#' @param title Optional character string for the plot title. No title is
+#'   drawn when `NULL` (the default).
 #' @param save_as One of \code{"viewer"} (default), \code{"pdf"},
 #'   \code{"png"}, or \code{"tiff"}.
 #' @param filename Optional file path. If \code{NULL} and
@@ -111,15 +110,8 @@ doi_plot <- function(object,
   )
 
   # Title via mtext so it doesn't interfere with doiplot's own layout
-  plot_title <- if (is.null(title)) {
-    sprintf(
-      "DOI plot - %s (k\u00a0=\u00a0%d stud%s)",
-      object$measure, k, if (k == 1L) "y" else "ies"
-    )
-  } else {
-    title
-  }
-  if (nzchar(plot_title)) {
+  plot_title <- title
+  if (!is.null(plot_title) && nzchar(plot_title)) {
     graphics::mtext(plot_title, side = 3, line = 1, font = 2, cex = 0.9)
   }
 

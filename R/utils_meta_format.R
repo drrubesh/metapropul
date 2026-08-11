@@ -3,8 +3,9 @@
   if (sm == "PLOGIT") {
     stats::plogis(x)
   } else if (sm == "PFT") {
-    # Freeman–Tukey inverse approximation
-    return((sin(x / 2))^2)
+    # Approximate inverse of the Freeman-Tukey double-arcsine transform.
+    # The transform is a sum of two arcsines, hence the division by two.
+    return(pmin(pmax((sin(x / 2))^2, 0), 1))
   } else {
     stop("Unsupported summary measure for proportions.")
   }

@@ -23,6 +23,9 @@ meta_mean(
   tau_method = "REML",
   ci_method = "HK",
   prediction_interval = TRUE,
+  missing_action = c("exclude", "error"),
+  duplicate_action = c("warn", "error", "make_unique"),
+  singleton_action = c("warn", "retain", "omit", "error"),
   verbose = FALSE
 )
 }
@@ -52,7 +55,9 @@ Optional alternative to supplying raw group data.}
 
 \item{studylab}{Column name for study labels (optional).}
 
-\item{subgroup}{Column name for subgroup variable (optional).}
+\item{subgroup}{Optional single character string naming a completely
+observed subgroup variable with at least two levels. The default \code{NULL}
+performs no subgroup analysis.}
 
 \item{model}{\code{"random"} (default) or \code{"fixed"}.}
 
@@ -66,16 +71,47 @@ Optional alternative to supplying raw group data.}
 \item{prediction_interval}{Logical. Compute a prediction interval (default
 \code{TRUE}).}
 
+\item{missing_action}{How incomplete analysis rows are handled: \code{"exclude"}
+records and removes them, while \code{"error"} stops before fitting.}
+
+\item{duplicate_action}{How duplicate study labels are handled: \code{"warn"}
+makes them unique and records the change, \code{"error"} stops, and
+\code{"make_unique"} records the change without warning.}
+
+\item{singleton_action}{Handling of subgroup levels containing one study:
+\code{"warn"}, \code{"retain"}, \code{"omit"}, or \code{"error"}.}
+
 \item{verbose}{Logical. Print progress messages (default \code{FALSE}).}
 }
 \value{
-An object of class \code{"meta_mean"}.
+An object of class \code{"meta_mean"} containing the fitted
+\pkg{meta} object, a tidy study table, optional subgroup summary, tidy and
+raw leave-one-out influence results, and the requested model settings.
 }
 \description{
 Performs a meta-analysis of continuous outcomes using mean difference (MD)
 or standardised mean difference (SMD). Accepts either raw group-level
 statistics or pre-computed effect sizes with confidence intervals.
 }
+\details{
+Raw arm-level inputs are fitted with \code{meta::metacont()}. Pre-computed
+MD or SMD estimates are fitted with \code{meta::metagen()}; their standard
+errors are reconstructed from \code{lower}, \code{upper}, and
+\code{ci_level}. Subgroup estimates are extracted from that same fitted
+model, so the confidence-interval and heterogeneity methods remain
+consistent with the overall analysis.
+}
+\section{CSV and Excel columns}{
+
+Use one row per independent comparison. Raw data require numeric columns
+for treatment mean, SD, and sample size and control mean, SD, and sample
+size. Pre-computed data require numeric \code{effect}, \code{lower}, and \code{upper}
+columns on the MD or SMD scale. To pool a continuous effect supplied with a
+standard error or variance, use \code{\link[=meta_generic]{meta_generic()}} with
+\code{backtransform = "identity"}. Column headers may differ because each is
+mapped by its argument.
+}
+
 \examples{
 \donttest{
 data(dat_normand1999, package = "metapropul")

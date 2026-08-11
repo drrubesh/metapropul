@@ -5,10 +5,9 @@
 #'
 #' @param object A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 #'   object.
-#' @param title Optional character string printed above the plot. If
-#'   \code{NULL} (default), an auto-constructed title is used. Set to
-#'   \code{""} to suppress.
-#' @param layout Layout style. One of \code{"RevMan5"} (default),
+#' @param title Optional character string printed above the plot. No title is
+#'   drawn when `NULL` (the default).
+#' @param layout Layout style. One of \code{"meta"} (default),
 #'   \code{"JAMA"}, \code{"BMJ"}, or \code{"meta"}.
 #' @param prediction Logical; if \code{TRUE}, show prediction intervals.
 #'   Default is \code{FALSE}.
@@ -37,7 +36,7 @@
 #' @export
 forest_influence <- function(object,
                              title = NULL,
-                             layout = "RevMan5",
+                             layout = "meta",
                              prediction = FALSE,
                              save_as = c("viewer", "pdf", "png", "tiff"),
                              filename = NULL,
@@ -73,6 +72,7 @@ forest_influence <- function(object,
   height <- sizing$height
   width <- sizing$width
   fontsize <- sizing$fontsize
+  spacing <- sizing$spacing
 
   if (is.null(filename) && save_as != "viewer") {
     ext <- switch(
@@ -98,15 +98,7 @@ forest_influence <- function(object,
   }
 
   is_prop <- inherits(object, "meta_prop")
-  plot_title <- if (is.null(title)) {
-    sprintf(
-      "Leave-one-out influence analysis - %s (k = %d)",
-      object$measure,
-      k
-    )
-  } else {
-    title
-  }
+  plot_title <- title
 
   # Temporary plotting copy:
   # keep raw metainf object intact in the result, but suppress
@@ -128,6 +120,13 @@ forest_influence <- function(object,
     prediction        = prediction,
     print.pred        = prediction,
     smlab             = "Leave-One-Out Meta-Analysis",
+    leftcols          = "studlab",
+    leftlabs          = "Study",
+    rightcols         = c("effect", "ci", "tau2", "tau", "I2"),
+    rightlabs         = c(
+      if (is_prop) "Proportion (%)" else object$measure,
+      "95% CI", "Tau\u00b2", "Tau", "I\u00b2"
+    ),
     just.addcols      = "right",
     squaresize        = 0.5,
     col.bg            = "blue",
@@ -135,6 +134,7 @@ forest_influence <- function(object,
     col.diamond       = "blue",
     col.diamond.lines = "blue",
     fontsize          = fontsize,
+    spacing           = spacing,
     fs.hetstat        = max(6, fontsize - 1L),
     xlab              = if (is_prop) "Proportion (%)" else NULL,
     pscale            = if (is_prop) 100 else 1,

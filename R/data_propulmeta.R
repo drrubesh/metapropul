@@ -97,7 +97,7 @@
 #' This dataset contains data from randomized trials evaluating the effect of caffeine
 #' ingestion on endurance performance, measured as time to exhaustion or distance covered.
 #'
-#' #' @format A data frame with 8 rows and 12 variables:
+#' @format A data frame with 8 rows and 12 variables:
 #' \describe{
 #'   \item{study}{Study label}
 #'   \item{year}{Year of publication}
@@ -130,7 +130,7 @@
 #' This dataset provides data from randomized controlled trials evaluating the efficacy
 #' of Cisapride versus placebo in healing reflux esophagitis.
 #'
-#' #' @format A data frame with 13 rows and 5 variables:
+#' @format A data frame with 13 rows and 5 variables:
 #' \describe{
 #'   \item{study}{Study label}
 #'   \item{event.cisa}{Number of healed patients in the cisapride group}
@@ -155,7 +155,7 @@
 #'
 #' Data from cohort studies investigating the association between smoking and lung cancer.
 #'
-#' #' @format A data frame with 7 rows and 6 variables:
+#' @format A data frame with 7 rows and 6 variables:
 #' \describe{
 #'   \item{study}{Study label}
 #'   \item{participants}{Number of participants in the study}
@@ -183,7 +183,7 @@
 #' This dataset contains data from studies evaluating the incidence of portal vein thrombosis
 #' following splenectomy.
 #'
-#' #' @format A data frame with 28 rows and 8 variables:
+#' @format A data frame with 28 rows and 8 variables:
 #' \describe{
 #'   \item{id}{Study identifier}
 #'   \item{treat.exp}{Experimental treatment group label}

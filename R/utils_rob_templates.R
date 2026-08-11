@@ -138,6 +138,23 @@
 )
 
 #' @keywords internal
+.default_custom_rob_colours <- function(levels) {
+  colours <- stats::setNames(scales::hue_pal()(length(levels)), levels)
+  keys <- tolower(trimws(gsub("[_-]+", " ", levels)))
+  semantic <- c(
+    "low" = "#02C100", "good" = "#02C100",
+    "some" = "#E2B007", "some concerns" = "#E2B007",
+    "moderate" = "#E2B007", "fair" = "#E2B007",
+    "unclear" = "#BDBDBD", "no information" = "#BDBDBD",
+    "serious" = "#E67E22",
+    "high" = "#BF0000", "critical" = "#7F0000", "poor" = "#BF0000"
+  )
+  matched <- match(keys, names(semantic))
+  colours[!is.na(matched)] <- unname(semantic[matched[!is.na(matched)]])
+  colours
+}
+
+#' @keywords internal
 .get_rob_template <- function(tool = "GENERIC",
                               domains = NULL,
                               levels = NULL,
@@ -161,10 +178,7 @@
     }
 
     if (is.null(colours)) {
-      colours <- stats::setNames(
-        rep("#BDBDBD", length(levels)),
-        levels
-      )
+      colours <- .default_custom_rob_colours(levels)
     }
 
     return(list(

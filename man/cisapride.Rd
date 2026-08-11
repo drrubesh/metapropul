@@ -5,7 +5,14 @@
 \alias{cisapride}
 \title{Cisapride and Reflux Esophagitis Dataset}
 \format{
-An object of class \code{data.frame} with 13 rows and 5 columns.
+A data frame with 13 rows and 5 variables:
+\describe{
+\item{study}{Study label}
+\item{event.cisa}{Number of healed patients in the cisapride group}
+\item{n.cisa}{Total number of patients in the cisapride group}
+\item{event.plac}{Number of healed patients in the placebo group}
+\item{n.plac}{Total number of patients in the placebo group}
+}
 }
 \source{
 Adapted from \code{meta} package example datasets.
@@ -18,15 +25,6 @@ This dataset provides data from randomized controlled trials evaluating the effi
 of Cisapride versus placebo in healing reflux esophagitis.
 }
 \details{
-#' @format A data frame with 13 rows and 5 variables:
-\describe{
-\item{study}{Study label}
-\item{event.cisa}{Number of healed patients in the cisapride group}
-\item{n.cisa}{Total number of patients in the cisapride group}
-\item{event.plac}{Number of healed patients in the placebo group}
-\item{n.plac}{Total number of patients in the placebo group}
-}
-
 This dataset is used to illustrate meta-analytic methods for binary outcomes like risk ratios and odds ratios.
 }
 \examples{

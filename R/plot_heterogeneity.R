@@ -12,9 +12,8 @@
 #' @param object A \code{meta_prop}, \code{meta_ratio}, or \code{meta_mean}
 #'   object.
 #' @param stat \code{"I2"} (default) or \code{"tau2"}.
-#' @param title Optional character string for the plot title. If \code{NULL}
-#'   (default), an informative auto-title is used. Set to \code{""} to
-#'   suppress the title.
+#' @param title Optional character string for the plot title. No title is
+#'   drawn when `NULL` (the default).
 #' @param save_as One of \code{"viewer"} (default), \code{"pdf"},
 #'   \code{"png"}, or \code{"tiff"}.
 #' @param filename Optional file name for saving.
@@ -109,22 +108,7 @@ plot_heterogeneity <- function(object,
     height <- min(45, max(12, 0.35 * k))
   }
 
-  plot_title <- if (is.null(title)) {
-    if (identical(stat, "I2")) {
-      paste0(
-        "Leave-one-out I\u00b2 - proportion of total variability due to ",
-        "between-study heterogeneity"
-      )
-    } else {
-      sprintf(
-        "Leave-one-out Tau\u00b2 - between-study variance (%s, k = %d)",
-        object$measure,
-        k
-      )
-    }
-  } else {
-    title
-  }
+  plot_title <- title
 
   if (!identical(save_as, "viewer")) {
     if (is.null(filename)) {

@@ -17,7 +17,9 @@
 #' @param upper Column name for the upper CI bound of \code{effect}.
 #' @param ci_level Confidence level for pre-computed CIs. Default \code{0.95}.
 #' @param studylab Column name for study labels (optional).
-#' @param subgroup Column name for subgroup variable (optional).
+#' @param subgroup Optional single character string naming a completely
+#'   observed subgroup variable with at least two levels. The default `NULL`
+#'   performs no subgroup analysis.
 #' @param model \code{"random"} (default) or \code{"fixed"}.
 #' @param measure \code{"MD"} (default) or \code{"SMD"}.
 #' @param tau_method Tau\eqn{^2} estimator. Default \code{"REML"}.
@@ -25,9 +27,35 @@
 #'   \code{"HK"} (default), \code{"classic"}, or \code{"KR"}.
 #' @param prediction_interval Logical. Compute a prediction interval (default
 #'   \code{TRUE}).
+#' @param missing_action How incomplete analysis rows are handled: `"exclude"`
+#'   records and removes them, while `"error"` stops before fitting.
+#' @param duplicate_action How duplicate study labels are handled: `"warn"`
+#'   makes them unique and records the change, `"error"` stops, and
+#'   `"make_unique"` records the change without warning.
+#' @param singleton_action Handling of subgroup levels containing one study:
+#'   `"warn"`, `"retain"`, `"omit"`, or `"error"`.
 #' @param verbose Logical. Print progress messages (default \code{FALSE}).
 #'
-#' @return An object of class \code{"meta_mean"}.
+#' @return An object of class \code{"meta_mean"} containing the fitted
+#'   \pkg{meta} object, a tidy study table, optional subgroup summary, tidy and
+#'   raw leave-one-out influence results, and the requested model settings.
+#'
+#' @details
+#' Raw arm-level inputs are fitted with \code{meta::metacont()}. Pre-computed
+#' MD or SMD estimates are fitted with \code{meta::metagen()}; their standard
+#' errors are reconstructed from \code{lower}, \code{upper}, and
+#' \code{ci_level}. Subgroup estimates are extracted from that same fitted
+#' model, so the confidence-interval and heterogeneity methods remain
+#' consistent with the overall analysis.
+#'
+#' @section CSV and Excel columns:
+#' Use one row per independent comparison. Raw data require numeric columns
+#' for treatment mean, SD, and sample size and control mean, SD, and sample
+#' size. Pre-computed data require numeric `effect`, `lower`, and `upper`
+#' columns on the MD or SMD scale. To pool a continuous effect supplied with a
+#' standard error or variance, use [meta_generic()] with
+#' `backtransform = "identity"`. Column headers may differ because each is
+#' mapped by its argument.
 #'
 #' @examples
 #' \donttest{
@@ -62,6 +90,9 @@ meta_mean <- function(data,
                       tau_method = "REML",
                       ci_method = "HK",
                       prediction_interval = TRUE,
+                      missing_action = c("exclude", "error"),
+                      duplicate_action = c("warn", "error", "make_unique"),
+                      singleton_action = c("warn", "retain", "omit", "error"),
                       verbose = FALSE) {
   if (verbose) message("Starting meta-analysis of means...")
 
@@ -93,6 +124,13 @@ meta_mean <- function(data,
 
   has_raw <- !is.null(mean.e) && !is.null(n.e) && !is.null(mean.c) && !is.null(n.c)
   has_pre <- !is.null(effect)
+
+  if (has_raw && has_pre) {
+    stop(
+      "Supply either raw group data or pre-computed effects, not both.",
+      call. = FALSE
+    )
+  }
 
   if (!has_raw && !has_pre) {
     stop("Provide either raw group data (mean.e, sd.e, n.e, mean.c, sd.c, n.c) ",
@@ -142,24 +180,21 @@ meta_mean <- function(data,
     }
   }
 
-  # -- Labels & subgroup --------------------------------------------------------
-  if (!is.null(studylab)) {
-    if (!studylab %in% names(data)) {
-      stop(sprintf("Column '%s' not found in data.", studylab), call. = FALSE)
-    }
-    study_labels <- as.character(data[[studylab]])
-  } else {
-    study_labels <- paste0("Study_", seq_len(nrow(data)))
+  # -- Labels, exclusions & subgroup -------------------------------------------
+  required <- if (has_raw) c(mean.e, sd.e, n.e, mean.c, sd.c, n.c) else
+    c(effect, lower, upper)
+  prepared <- .prepare_analysis_data(
+    data, required = required, studylab = studylab, subgroup = subgroup,
+    missing_action = missing_action, duplicate_action = duplicate_action,
+    singleton_action = singleton_action
+  )
+  data <- prepared$data
+  study_labels <- prepared$labels
+  if (nrow(data) < 2L) {
+    stop("Fewer than 2 complete studies remain for analysis.", call. = FALSE)
   }
 
-  if (!is.null(subgroup)) {
-    if (!subgroup %in% names(data)) {
-      stop(sprintf("Column '%s' not found in data.", subgroup), call. = FALSE)
-    }
-    subgroup_var <- data[[subgroup]]
-  } else {
-    subgroup_var <- NULL
-  }
+  subgroup_var <- .validate_subgroup(data, subgroup, singleton_action)
 
   # -- Fit model ----------------------------------------------------------------
   if (has_raw) {
@@ -204,38 +239,19 @@ meta_mean <- function(data,
   # Use per-study TE/lower/upper vectors, not pooled scalars.
   tidy_tbl <- tibble::tibble(
     Study = meta_result$studlab,
-    Estimate = round(meta_result$TE, 3),
-    lower = round(meta_result$lower, 3),
-    upper = round(meta_result$upper, 3),
-    weight = round(if (model == "random") {
+    Estimate = meta_result$TE,
+    lower = meta_result$lower,
+    upper = meta_result$upper,
+    weight = if (model == "random") {
       meta_result$w.random / sum(meta_result$w.random) * 100
     } else {
       meta_result$w.fixed / sum(meta_result$w.fixed) * 100
-    }, 1),
+    },
     subgroup = if (!is.null(subgroup)) subgroup_var else NA
   )
 
   # -- Subgroup summary ---------------------------------------------------------
-  meta.subgroup.summary <- NULL
-  if (!is.null(subgroup) && !is.null(meta_result$subgroup.levels)) {
-    if (model == "random") {
-      sg_est <- meta_result$TE.random.w
-      sg_lower <- meta_result$lower.random.w
-      sg_upper <- meta_result$upper.random.w
-    } else {
-      sg_est <- meta_result$TE.common.w
-      sg_lower <- meta_result$lower.common.w
-      sg_upper <- meta_result$upper.common.w
-    }
-    meta.subgroup.summary <- tibble::tibble(
-      Subgroup = meta_result$subgroup.levels,
-      Estimate = round(sg_est, 3),
-      lower    = round(sg_lower, 3),
-      upper    = round(sg_upper, 3),
-      Tau2     = round(meta_result$tau2.w, 4),
-      I2       = round(meta_result$I2.w * 100, 1)
-    )
-  }
+  meta.subgroup.summary <- .subgroup_summary(meta_result, model)
 
   # -- Influence analysis -------------------------------------------------------
   inf_random <- model == "random"
@@ -257,12 +273,12 @@ meta_mean <- function(data,
   influence_data <- if (!is.null(influence_obj)) {
     tibble::tibble(
       Study = influence_obj$studlab,
-      Estimate = round(influence_obj$TE, 3),
-      lower = round(influence_obj$lower, 3),
-      upper = round(influence_obj$upper, 3),
-      p.value = round(influence_obj$pval, 4),
-      Tau2 = round(influence_obj$tau2, 4),
-      I2 = round(influence_obj$I2 * 100, 1)
+      Estimate = influence_obj$TE,
+      lower = influence_obj$lower,
+      upper = influence_obj$upper,
+      p.value = influence_obj$pval,
+      Tau2 = influence_obj$tau2,
+      I2 = influence_obj$I2 * 100
     )
   } else {
     NULL
@@ -275,6 +291,16 @@ meta_mean <- function(data,
       meta.subgroup.summary = meta.subgroup.summary,
       influence.analysis    = influence_data,
       influence.meta        = influence_obj,
+      subgroup_test         = .subgroup_test(meta_result),
+      analysis_data         = prepared$analysis_data,
+      excluded_data         = prepared$excluded_data,
+      exclusion_log         = prepared$exclusion_log,
+      label_audit           = prepared$label_audit,
+      settings              = list(input = if (has_raw) "raw" else "precomputed",
+        prediction_interval = prediction_interval,
+        missing_action = match.arg(missing_action),
+        duplicate_action = match.arg(duplicate_action),
+        singleton_action = match.arg(singleton_action)),
       model                 = model,
       measure               = measure,
       tau_method            = tau_method,

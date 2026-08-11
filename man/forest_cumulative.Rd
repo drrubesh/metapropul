@@ -21,13 +21,17 @@ forest_cumulative(
 \item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 object.}
 
-\item{title}{Optional character string printed above the plot. If
-\code{NULL} (default), an auto-constructed title is used. Set to
-\code{""} to suppress.}
+\item{title}{Optional character string printed above the plot. No title is
+drawn when \code{NULL} (the default).}
 
 \item{layout}{Forest plot layout passed to \code{meta::forest()}. One of
 \code{"RevMan5"} (default), \code{"JAMA"}, \code{"BMJ"}, or
 \code{"meta"}.}
+
+\item{prediction}{Logical; show a prediction interval (default \code{FALSE}).}
+
+\item{overall}{Logical; show the overall cumulative estimate (default
+\code{TRUE}).}
 
 \item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
 \code{"png"}, or \code{"tiff"}.}

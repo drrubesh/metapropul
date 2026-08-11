@@ -12,9 +12,8 @@
 #' @param moderator Character. Moderator variable to plot. Required when the
 #'   model has multiple predictors. If \code{NULL} and only one predictor
 #'   exists, that predictor is used automatically.
-#' @param title Optional character string printed above the plot (or grid). If
-#'   \code{NULL} (default), an auto-constructed title is used. Set to
-#'   \code{""} to suppress.
+#' @param title Optional character string printed above the plot (or grid). No
+#'   title is drawn when `NULL` (the default).
 #' @param plot_all_levels Logical. For categorical moderators, produce a panel
 #'   per dummy variable (default \code{TRUE}).
 #' @param max_levels Integer. Maximum categorical levels to plot (default 6).
@@ -59,6 +58,34 @@ bubble_plot <- function(meta_reg_object,
 
   if (!inherits(meta_reg_object, "meta_reg")) {
     stop("Input must be a 'meta_reg' object.", call. = FALSE)
+  }
+
+  resolved_moderator <- moderator
+  if (is.null(resolved_moderator) &&
+      length(meta_reg_object$moderator_variables) == 1L) {
+    resolved_moderator <- meta_reg_object$moderator_variables
+  }
+  if (!is.null(resolved_moderator) &&
+      length(meta_reg_object$moderator_variables) == 1L &&
+      is.numeric(meta_reg_object$model_data[[resolved_moderator]])) {
+    plot <- plot_meta_reg(
+      meta_reg_object,
+      type = "bubble",
+      moderator = resolved_moderator,
+      title = title,
+      save_as = save_as,
+      filename = filename,
+      width = width,
+      height = height
+    )
+    if (save_as == "viewer") {
+      print(plot)
+      message(
+        "Bubble plot displayed in Viewer. Use save_as = 'pdf', 'png', ",
+        "or 'tiff' to export."
+      )
+    }
+    return(invisible(TRUE))
   }
 
   model <- meta_reg_object$meta
@@ -184,14 +211,9 @@ bubble_plot <- function(meta_reg_object,
   }
 
   # Overall title \u2014 printed after panels so mtext outer works
-  plot_title <- if (is.null(title)) {
-    mod_name <- if (!is.null(moderator)) moderator else if (length(terms_to_plot) > 0) terms_to_plot[[1]]$name else "moderator"
-    sprintf("Meta-regression bubble plot - %s", mod_name)
-  } else {
-    title
-  }
+  plot_title <- title
 
-  if (nzchar(plot_title)) {
+  if (!is.null(plot_title) && nzchar(plot_title)) {
     if (n_plots > 1L) {
       graphics::mtext(plot_title,
         side = 3, line = -1.5, outer = TRUE,

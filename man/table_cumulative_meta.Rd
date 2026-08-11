@@ -16,8 +16,8 @@ table_cumulative_meta(
 \item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 object.}
 
-\item{title}{Optional character string for the table title. If \code{NULL}
-(default), an auto-constructed title is used.}
+\item{title}{Optional character string for the table title. No title is
+added when \code{NULL} (the default).}
 
 \item{include_heterogeneity}{Logical. Include I\eqn{^2} and Tau\eqn{^2}
 columns (default \code{TRUE}).}

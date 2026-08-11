@@ -5,8 +5,8 @@
 #'
 #' @param object A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 #'   object.
-#' @param title Optional character string for the table title. If \code{NULL}
-#'   (default), an auto-constructed title is used.
+#' @param title Optional character string for the table title. No title is
+#'   added when `NULL` (the default).
 #' @param include_heterogeneity Logical. Include I\eqn{^2} and Tau\eqn{^2}
 #'   columns (default \code{TRUE}).
 #' @param save_as One of \code{"viewer"} (default), \code{"docx"}, or
@@ -128,19 +128,8 @@ table_influence <- function(object,
                       "Estimate [95% CI]"
   )
 
-  k <- nrow(df)
-  tbl_title <- if (!is.null(title)) {
-    title
-  } else {
-    sprintf(
-      "Leave-one-out influence analysis (k = %d stud%s)",
-      k,
-      if (k == 1L) "y" else "ies"
-    )
-  }
-
   gt_tbl <- gt::gt(df) |>
-    gt::tab_header(title = tbl_title) |>
+    .gt_optional_title(title) |>
     gt::cols_label(`Estimate [95% CI]` = col_label)
 
   if (isTRUE(include_heterogeneity) && i2_col %in% names(df)) {

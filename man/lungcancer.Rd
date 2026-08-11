@@ -5,7 +5,15 @@
 \alias{lungcancer}
 \title{Lung Cancer and Smoking Cohort Study Dataset}
 \format{
-An object of class \code{data.frame} with 7 rows and 6 columns.
+A data frame with 7 rows and 6 variables:
+\describe{
+\item{study}{Study label}
+\item{participants}{Number of participants in the study}
+\item{d.smokers}{Number of lung cancer deaths among smokers}
+\item{py.smokers}{Person-years among smokers}
+\item{d.nonsmokers}{Number of lung cancer deaths among non-smokers}
+\item{py.nonsmokers}{Person-years among non-smokers}
+}
 }
 \source{
 Adapted from \code{meta} package examples.
@@ -17,16 +25,6 @@ data(lungcancer)
 Data from cohort studies investigating the association between smoking and lung cancer.
 }
 \details{
-#' @format A data frame with 7 rows and 6 variables:
-\describe{
-\item{study}{Study label}
-\item{participants}{Number of participants in the study}
-\item{d.smokers}{Number of lung cancer deaths among smokers}
-\item{py.smokers}{Person-years among smokers}
-\item{d.nonsmokers}{Number of lung cancer deaths among non-smokers}
-\item{py.nonsmokers}{Person-years among non-smokers}
-}
-
 This dataset is often used for meta-analysis of cohort study data to calculate relative risks (RR) for smoking.
 }
 \examples{

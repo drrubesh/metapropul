@@ -5,20 +5,7 @@
 \alias{caffeine}
 \title{Caffeine and Endurance Performance Dataset}
 \format{
-An object of class \code{data.frame} with 8 rows and 12 columns.
-}
-\source{
-Adapted from \code{meta} package example datasets.
-}
-\usage{
-data(caffeine)
-}
-\description{
-This dataset contains data from randomized trials evaluating the effect of caffeine
-ingestion on endurance performance, measured as time to exhaustion or distance covered.
-}
-\details{
-#' @format A data frame with 8 rows and 12 variables:
+A data frame with 8 rows and 12 variables:
 \describe{
 \item{study}{Study label}
 \item{year}{Year of publication}
@@ -33,7 +20,18 @@ ingestion on endurance performance, measured as time to exhaustion or distance c
 \item{D5}{Risk of bias domain 5}
 \item{rob}{Overall risk of bias}
 }
-
+}
+\source{
+Adapted from \code{meta} package example datasets.
+}
+\usage{
+data(caffeine)
+}
+\description{
+This dataset contains data from randomized trials evaluating the effect of caffeine
+ingestion on endurance performance, measured as time to exhaustion or distance covered.
+}
+\details{
 This dataset is commonly used in meta-analyses of continuous outcomes to demonstrate methods for pooling mean differences
 or standardized mean differences.
 }

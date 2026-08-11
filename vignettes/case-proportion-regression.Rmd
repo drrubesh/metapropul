@@ -1,0 +1,136 @@
+---
+title: "Case study: Tuberculosis proportions and meta-regression"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Case study: Tuberculosis proportions and meta-regression}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 9,
+  fig.height = 6, message = FALSE, warning = FALSE)
+render_gt <- function(expr) {
+  invisible(utils::capture.output(table <- force(expr)))
+  cat(gt::as_raw_html(table))
+}
+```
+
+This case study estimates tuberculosis event proportions in BCG study arms and
+then investigates latitude as a moderator. It demonstrates single-proportion
+transformations and the complete meta-regression workflow.
+
+```{r}
+library(metapropul)
+data("dat_bcg", package = "metapropul")
+```
+
+## Proportion meta-analysis and subgroups
+
+```{r}
+prop_logit <- meta_prop(
+  dat_bcg, event = "tpos", n = "npos",
+  studylab = "author", subgroup = "alloc",
+  sm = "PLOGIT", model = "random", ci_method = "HK"
+)
+summary(prop_logit)
+prop_logit$meta.subgroup.summary
+```
+
+The Freeman--Tukey option is retained for compatibility, but its
+back-transformation can be difficult to interpret and can behave poorly when
+study sizes differ. It is shown below only as a sensitivity analysis; logit or
+GLMM approaches are generally preferable for the primary analysis.
+
+```{r}
+prop_pft <- meta_prop(
+  dat_bcg, "tpos", "npos", studylab = "author",
+  subgroup = "alloc", sm = "PFT", model = "fixed"
+)
+summary(prop_pft)
+```
+
+```{r proportion-table, results='asis'}
+render_gt(table_meta(prop_logit, title = "Tuberculosis events in BCG study arms"))
+```
+
+```{r proportion-forest, fig.height=8}
+forest_meta(prop_logit)
+```
+
+## Univariable meta-regression
+
+Latitude is centred so that the intercept refers to the effect at the mean
+latitude. Knapp--Hartung inference is requested explicitly.
+
+```{r}
+reg_latitude <- meta_reg(
+  prop_logit, dat_bcg, ~ ablat,
+  studylab = "author", center = "ablat", test = "knha",
+  min_studies_per_parameter = 3
+)
+summary(reg_latitude)
+```
+
+```{r regression-table, results='asis'}
+render_gt(table_meta_reg(reg_latitude))
+```
+
+## Predicted proportions
+
+```{r}
+predict_meta_reg(
+  reg_latitude,
+  newdata = data.frame(ablat = c(10, 30, 50)),
+  scale = "response"
+)
+```
+
+## Bubble plot with confidence and prediction bands
+
+```{r bubble}
+plot_meta_reg(reg_latitude, type = "bubble", moderator = "ablat")
+```
+
+`bubble_plot()` is retained as a convenient wrapper around the same plotting
+system.
+
+```{r bubble-wrapper}
+bubble_plot(reg_latitude, moderator = "ablat")
+```
+
+## Residual, fitted-value, and influence diagnostics
+
+```{r}
+reg_diagnostics <- diagnose_meta_reg(reg_latitude)
+reg_diagnostics$collinearity
+head(reg_diagnostics$studies)
+```
+
+```{r residual}
+plot_meta_reg(reg_latitude, type = "residual")
+```
+
+```{r fitted}
+plot_meta_reg(reg_latitude, type = "fitted")
+```
+
+```{r regression-influence}
+plot_meta_reg(reg_latitude, type = "influence")
+```
+
+## Categorical moderators and interactions
+
+The multivariable example fixes the categorical reference level, standardises
+latitude, and includes an interaction. With only 13 studies, it is deliberately
+illustrative and should not be treated as a well-powered substantive model.
+
+```{r}
+reg_interaction <- meta_reg(
+  prop_logit, dat_bcg, ~ ablat * alloc,
+  studylab = "author", reference_levels = c(alloc = "random"),
+  scale = "ablat", min_studies_per_parameter = 2
+)
+summary(reg_interaction)
+diagnose_meta_reg(reg_interaction)$collinearity
+```

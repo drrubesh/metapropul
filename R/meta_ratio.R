@@ -2,7 +2,7 @@
 #'
 #' Conducts a meta-analysis of ratio effect measures using either raw
 #' event-count data or pre-computed study-level effect estimates with
-#' confidence intervals.
+#' confidence intervals, or log-ratio estimates with standard errors.
 #'
 #' Two input formats are supported:
 #' \itemize{
@@ -10,6 +10,8 @@
 #'   \code{event.c}, and \code{n.c}
 #'   \item Pre-computed effect sizes using \code{effect}, \code{lower},
 #'   and \code{upper}
+#'   \item Log OR, log RR, or log HR estimates using \code{effect} and
+#'   \code{se}, with \code{effect_scale = "log"}
 #' }
 #'
 #' The function supports odds ratios (OR), risk ratios (RR), and hazard
@@ -39,6 +41,12 @@
 #'
 #' @param upper Character string giving the column name for the upper
 #'   confidence interval bound of the pre-computed effect estimate.
+#' @param se Optional character string giving the standard-error column for a
+#'   pre-computed log ratio. When supplied, set `effect_scale = "log"` and do
+#'   not supply `lower` or `upper`.
+#' @param effect_scale Scale of pre-computed `effect`, `lower`, and `upper`:
+#'   `"ratio"` (default) for OR/RR/HR values, or `"log"` for log OR/log RR/log
+#'   HR values. Standard-error input is supported only on the log scale.
 #'
 #' @param ci_level Numeric scalar giving the confidence level used for
 #'   pre-computed effect sizes, typically \code{0.95}. This is used to
@@ -48,8 +56,10 @@
 #'   study labels. If omitted, labels are auto-generated as
 #'   \code{"Study_1"}, \code{"Study_2"}, and so on.
 #'
-#' @param subgroup Optional character string giving the column name for
-#'   a subgroup variable used in subgroup meta-analysis.
+#' @param subgroup Optional single character string giving a completely
+#'   observed subgroup column. At least two observed levels are required.
+#'   Singleton levels are retained with a warning. The default `NULL` performs
+#'   no subgroup analysis; subgroup analysis must be requested explicitly.
 #'
 #' @param model Character string specifying the meta-analytic model:
 #'   \code{"random"} for random-effects or \code{"fixed"} for
@@ -74,6 +84,17 @@
 #' @param prediction_interval Logical; if \code{TRUE}, a prediction
 #'   interval is computed for the pooled random-effects estimate where
 #'   applicable.
+#' @param incr Continuity correction added to zero cells for raw binary data.
+#' @param method_incr When to apply `incr`: `"only0"`, `"if0all"`, `"all"`,
+#'   or `"user"`, corresponding to `meta::metabin()`'s `method.incr`.
+#' @param allstudies Logical; apply the continuity correction to all studies.
+#' @param missing_action How incomplete analysis rows are handled: `"exclude"`
+#'   records and removes them, while `"error"` stops before fitting.
+#' @param duplicate_action How duplicate study labels are handled: `"warn"`
+#'   (default) makes them unique and records the change, `"error"` stops, and
+#'   `"make_unique"` records the change without warning.
+#' @param singleton_action Handling of subgroup levels containing one study:
+#'   `"warn"`, `"retain"`, `"omit"`, or `"error"`.
 #'
 #' @param verbose Logical; if \code{TRUE}, progress messages are printed
 #'   during model fitting.
@@ -92,9 +113,10 @@
 #' @details
 #' If raw event-count data are supplied, the function fits the model
 #' using \code{meta::metabin()}. If pre-computed effect sizes are
-#' supplied, the function log-transforms the estimates and derives
-#' standard errors from the reported confidence intervals before fitting
-#' the model using \code{meta::metagen()}.
+#' supplied on the ratio scale, the function log-transforms the estimates and
+#' derives standard errors from the reported confidence intervals. Log-scale
+#' confidence limits or a log-scale standard error may instead be supplied
+#' directly. All pre-computed paths are fitted with \code{meta::metagen()}.
 #'
 #' When pre-computed effect sizes are used, studies with non-finite
 #' log-transformed values are excluded with a warning. This commonly
@@ -105,6 +127,15 @@
 #' differ if zero-cell corrections were applied in the original study
 #' calculations or if raw event counts are analysed with continuity
 #' corrections internally by \pkg{meta}.
+#'
+#' @section CSV and Excel columns:
+#' Use one row per independent study comparison. For OR or RR from counts,
+#' provide numeric columns corresponding to `event.e`, `n.e`, `event.c`, and
+#' `n.c`. For a reported OR, RR, or HR, provide `effect`, `lower`, and `upper`
+#' on the ratio scale. Alternatively provide a log effect and its standard
+#' error using `effect`, `se`, and `effect_scale = "log"`. Study-label and
+#' subgroup columns may contain text. Column headers do not need to use these
+#' exact names because arguments map the user's headers explicitly.
 #' @examples
 #' data(dat_bcg, package = "metapropul")
 #'
@@ -126,6 +157,8 @@ meta_ratio <- function(data,
                        effect = NULL,
                        lower = NULL,
                        upper = NULL,
+                       se = NULL,
+                       effect_scale = c("ratio", "log"),
                        ci_level = 0.95,
                        studylab = NULL,
                        subgroup = NULL,
@@ -134,6 +167,12 @@ meta_ratio <- function(data,
                        tau_method = "REML",
                        ci_method = "HK",
                        prediction_interval = TRUE,
+                       incr = 0.5,
+                       method_incr = c("only0", "if0all", "all", "user"),
+                       allstudies = FALSE,
+                       missing_action = c("exclude", "error"),
+                       duplicate_action = c("warn", "error", "make_unique"),
+                       singleton_action = c("warn", "retain", "omit", "error"),
                        verbose = FALSE) {
   if (verbose) message("Starting meta-analysis of ratios...")
 
@@ -156,9 +195,24 @@ meta_ratio <- function(data,
       call. = FALSE
     )
   }
+  if (!is.numeric(incr) || length(incr) != 1L || !is.finite(incr) || incr < 0) {
+    stop("'incr' must be a single non-negative finite number.", call. = FALSE)
+  }
+  method_incr <- match.arg(method_incr)
+  if (!is.logical(allstudies) || length(allstudies) != 1L || is.na(allstudies)) {
+    stop("'allstudies' must be TRUE or FALSE.", call. = FALSE)
+  }
 
   has_events <- !is.null(event.e) && !is.null(event.c)
   has_pre <- !is.null(effect)
+  effect_scale <- match.arg(effect_scale)
+
+  if (has_events && has_pre) {
+    stop(
+      "Supply either raw event counts or pre-computed effects, not both.",
+      call. = FALSE
+    )
+  }
 
   if (has_events) {
     if (is.null(n.e) || is.null(n.c)) {
@@ -174,6 +228,10 @@ meta_ratio <- function(data,
         stop(sprintf("Column '%s' must be numeric.", col), call. = FALSE)
       }
     }
+    if (any(data[[event.e]] < 0, na.rm = TRUE) ||
+      any(data[[event.c]] < 0, na.rm = TRUE)) {
+      stop("Event counts must be non-negative.", call. = FALSE)
+    }
     if (any(data[[event.e]] > data[[n.e]], na.rm = TRUE) ||
       any(data[[event.c]] > data[[n.c]], na.rm = TRUE)) {
       stop("Event counts cannot exceed sample sizes.", call. = FALSE)
@@ -185,12 +243,21 @@ meta_ratio <- function(data,
   }
 
   if (has_pre) {
-    if (is.null(lower) || is.null(upper)) {
-      stop("Please provide 'lower' and 'upper' bounds when supplying 'effect'.",
-        call. = FALSE
-      )
+    has_ci <- !is.null(lower) || !is.null(upper)
+    has_se <- !is.null(se)
+    if (has_ci == has_se) {
+      stop("With 'effect', supply either 'se' or both 'lower' and 'upper'.",
+        call. = FALSE)
     }
-    for (col in c(effect, lower, upper)) {
+    if (has_ci && (is.null(lower) || is.null(upper))) {
+      stop("Supply both 'lower' and 'upper'.", call. = FALSE)
+    }
+    if (has_se && effect_scale != "log") {
+      stop("Standard-error input requires 'effect_scale = \"log\"'.",
+        call. = FALSE)
+    }
+    pre_cols <- c(effect, if (has_se) se else c(lower, upper))
+    for (col in pre_cols) {
       if (!col %in% names(data)) {
         stop(sprintf("Column '%s' not found in data.", col), call. = FALSE)
       }
@@ -198,13 +265,16 @@ meta_ratio <- function(data,
         stop(sprintf("Column '%s' must be numeric.", col), call. = FALSE)
       }
     }
-    if (any(data[[lower]] > data[[upper]], na.rm = TRUE)) {
+    if (has_ci && any(data[[lower]] > data[[upper]], na.rm = TRUE)) {
       stop("'lower' must be <= 'upper' for all rows.", call. = FALSE)
+    }
+    if (has_se && any(!is.finite(data[[se]]) | data[[se]] <= 0, na.rm = TRUE)) {
+      stop("Standard errors must be positive and finite.", call. = FALSE)
     }
   }
 
   if (!has_events && !has_pre) {
-    stop("Provide either event counts (event.e, event.c) or effect sizes (effect, lower, upper).",
+    stop("Provide either event counts or pre-computed effect sizes with CI/SE.",
       call. = FALSE
     )
   }
@@ -225,24 +295,22 @@ meta_ratio <- function(data,
     )
   }
 
-  # -- Labels & subgroup --------------------------------------------------------
-  if (!is.null(studylab)) {
-    if (!studylab %in% names(data)) {
-      stop(sprintf("Column '%s' not found in data.", studylab), call. = FALSE)
-    }
-    study_labels <- as.character(data[[studylab]])
-  } else {
-    study_labels <- paste0("Study_", seq_len(nrow(data)))
+  # -- Labels, exclusions & subgroup -------------------------------------------
+  required <- if (has_events) c(event.e, n.e, event.c, n.c) else {
+    c(effect, if (!is.null(se)) se else c(lower, upper))
+  }
+  prepared <- .prepare_analysis_data(
+    data, required = required, studylab = studylab, subgroup = subgroup,
+    missing_action = missing_action, duplicate_action = duplicate_action,
+    singleton_action = singleton_action
+  )
+  data <- prepared$data
+  study_labels <- prepared$labels
+  if (nrow(data) < 2L) {
+    stop("Fewer than 2 complete studies remain for analysis.", call. = FALSE)
   }
 
-  if (!is.null(subgroup)) {
-    if (!subgroup %in% names(data)) {
-      stop(sprintf("Column '%s' not found in data.", subgroup), call. = FALSE)
-    }
-    subgroup_var <- data[[subgroup]]
-  } else {
-    subgroup_var <- NULL
-  }
+  subgroup_var <- .validate_subgroup(data, subgroup, singleton_action)
 
   common <- model == "fixed"
   random <- model == "random"
@@ -256,6 +324,9 @@ meta_ratio <- function(data,
       n.c              = data[[n.c]],
       studlab          = study_labels,
       sm               = measure,
+      incr             = incr,
+      method.incr      = method_incr,
+      allstudies       = allstudies,
       method.tau       = tau_method,
       method.random.ci = ci_method,
       common           = common,
@@ -264,11 +335,19 @@ meta_ratio <- function(data,
       subgroup         = subgroup_var
     )
   } else {
-    log_effect <- log(data[[effect]])
-    log_lower <- log(data[[lower]])
-    log_upper <- log(data[[upper]])
-    bad_idx <- which(!is.finite(log_effect) | !is.finite(log_lower) |
-      !is.finite(log_upper))
+    log_effect <- if (effect_scale == "ratio") log(data[[effect]]) else data[[effect]]
+    log_lower <- if (is.null(se)) {
+      if (effect_scale == "ratio") log(data[[lower]]) else data[[lower]]
+    } else NULL
+    log_upper <- if (is.null(se)) {
+      if (effect_scale == "ratio") log(data[[upper]]) else data[[upper]]
+    } else NULL
+    se_effect <- if (!is.null(se)) data[[se]] else {
+      z_val <- stats::qnorm(1 - (1 - ci_level) / 2)
+      (log_upper - log_lower) / (2 * z_val)
+    }
+    bad_idx <- which(!is.finite(log_effect) | !is.finite(se_effect) |
+      se_effect <= 0)
     if (length(bad_idx) > 0L) {
       warning(
         sprintf(
@@ -290,13 +369,11 @@ meta_ratio <- function(data,
       study_labels <- study_labels[keep]
       subgroup_var <- if (!is.null(subgroup_var)) subgroup_var[keep] else NULL
       log_effect <- log_effect[keep]
-      log_lower <- log_lower[keep]
-      log_upper <- log_upper[keep]
+      se_effect <- se_effect[keep]
     }
-    z_val <- stats::qnorm(1 - (1 - ci_level) / 2)
     meta_result <- meta::metagen(
       TE               = log_effect,
-      seTE             = (log_upper - log_lower) / (2 * z_val),
+      seTE             = se_effect,
       studlab          = study_labels,
       sm               = measure,
       method.tau       = tau_method,
@@ -319,38 +396,21 @@ meta_ratio <- function(data,
   # meta$TE, meta$lower, meta$upper are study-level on the log scale.
   tidy_tbl <- tibble::tibble(
     Study = meta_result$studlab,
-    Estimate = round(exp(meta_result$TE), 3),
-    lower = round(exp(meta_result$lower), 3),
-    upper = round(exp(meta_result$upper), 3),
-    weight = round(if (model == "random") {
+    Estimate = exp(meta_result$TE),
+    lower = exp(meta_result$lower),
+    upper = exp(meta_result$upper),
+    weight = if (model == "random") {
       meta_result$w.random / sum(meta_result$w.random) * 100
     } else {
       meta_result$w.fixed / sum(meta_result$w.fixed) * 100
-    }, 1),
+    },
     subgroup = if (!is.null(subgroup)) subgroup_var else NA
   )
 
   # -- Subgroup summary ---------------------------------------------------------
-  meta.subgroup.summary <- NULL
-  if (!is.null(subgroup) && !is.null(meta_result$subgroup.levels)) {
-    if (model == "random") {
-      sg_est <- meta_result$TE.random.w
-      sg_lower <- meta_result$lower.random.w
-      sg_upper <- meta_result$upper.random.w
-    } else {
-      sg_est <- meta_result$TE.common.w
-      sg_lower <- meta_result$lower.common.w
-      sg_upper <- meta_result$upper.common.w
-    }
-    meta.subgroup.summary <- tibble::tibble(
-      Subgroup = meta_result$subgroup.levels,
-      Estimate = round(exp(sg_est), 3),
-      lower    = round(exp(sg_lower), 3),
-      upper    = round(exp(sg_upper), 3),
-      Tau2     = round(meta_result$tau2.w, 4),
-      I2       = round(meta_result$I2.w * 100, 1)
-    )
-  }
+  meta.subgroup.summary <- .subgroup_summary(
+    meta_result, model, transform = exp
+  )
 
   # -- Influence analysis -------------------------------------------------------
   inf_random <- model == "random"
@@ -372,12 +432,12 @@ meta_ratio <- function(data,
   influence_data <- if (!is.null(influence_obj)) {
     tibble::tibble(
       Study = influence_obj$studlab,
-      Estimate = round(exp(influence_obj$TE), 3),
-      lower = round(exp(influence_obj$lower), 3),
-      upper = round(exp(influence_obj$upper), 3),
-      p.value = round(influence_obj$pval, 4),
-      Tau2 = round(influence_obj$tau2, 4),
-      I2 = round(influence_obj$I2 * 100, 1)
+      Estimate = exp(influence_obj$TE),
+      lower = exp(influence_obj$lower),
+      upper = exp(influence_obj$upper),
+      p.value = influence_obj$pval,
+      Tau2 = influence_obj$tau2,
+      I2 = influence_obj$I2 * 100
     )
   } else {
     NULL
@@ -390,6 +450,21 @@ meta_ratio <- function(data,
       meta.subgroup.summary = meta.subgroup.summary,
       influence.analysis    = influence_data,
       influence.meta        = influence_obj,
+      subgroup_test         = .subgroup_test(meta_result),
+      analysis_data         = prepared$analysis_data,
+      excluded_data         = prepared$excluded_data,
+      exclusion_log         = prepared$exclusion_log,
+      label_audit           = prepared$label_audit,
+      settings              = list(input = if (has_events) "raw" else "precomputed",
+        effect_scale = if (has_events) NA_character_ else effect_scale,
+        uncertainty = if (has_events) NA_character_ else if (!is.null(se)) "se" else "ci",
+        prediction_interval = prediction_interval,
+        continuity_correction = if (has_events) incr else NA_real_,
+        method_incr = if (has_events) method_incr else NA_character_,
+        allstudies = if (has_events) allstudies else NA,
+        missing_action = match.arg(missing_action),
+        duplicate_action = match.arg(duplicate_action),
+        singleton_action = match.arg(singleton_action)),
       model                 = model,
       measure               = measure,
       tau_method            = tau_method,

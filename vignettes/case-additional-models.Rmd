@@ -1,0 +1,111 @@
+---
+title: "Case study: generic effects, correlations, and incidence rates"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Case study: generic effects, correlations, and incidence rates}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 8,
+                      fig.height = 5.5, dpi = 120)
+library(metapropul)
+
+render_gt <- function(expr) {
+  table <- eval.parent(substitute(expr))
+  cat(gt::as_raw_html(table))
+}
+```
+
+This case study covers three common situations that do not use raw two-arm
+means or binary-event counts: published estimates with standard errors,
+correlations with sample sizes, and incidence rates based on person-time.
+
+## Generic inverse-variance meta-analysis
+
+`meta_generic()` pools study estimates when an effect and its uncertainty are
+already available. `Pagliaro1992` contains log odds ratios and standard errors.
+Some identifiers repeat, so `duplicate_action = "make_unique"` preserves every
+row while creating unambiguous display labels.
+
+```{r generic-model}
+generic_fit <- meta_generic(
+  Pagliaro1992, effect = "logOR", se = "selogOR", studylab = "id",
+  measure = "Odds ratio", backtransform = "exp",
+  duplicate_action = "make_unique"
+)
+summary(generic_fit)
+```
+
+```{r generic-table, results='asis'}
+render_gt(table_meta(generic_fit))
+```
+
+```{r generic-forest, fig.cap="Generic inverse-variance meta-analysis of odds ratios."}
+forest_meta(generic_fit)
+```
+
+The analysis is performed on the log scale and displayed on the odds-ratio
+scale, avoiding invalid arithmetic while keeping the output interpretable.
+
+## Meta-analysis of correlations
+
+`meta_cor()` applies Fisher's z transformation internally and returns results
+on the correlation scale. This small dataset is simulated solely to make the
+workflow reproducible.
+
+```{r correlation-data}
+correlations <- data.frame(
+  study = paste("Study", LETTERS[1:8]),
+  r = c(0.12, 0.21, 0.35, 0.28, 0.44, 0.18, 0.39, 0.31),
+  n = c(82, 115, 74, 160, 93, 126, 105, 141)
+)
+cor_fit <- meta_cor(correlations, cor = "r", n = "n",
+                    studylab = "study")
+summary(cor_fit)
+```
+
+```{r correlation-table, results='asis'}
+render_gt(table_meta(cor_fit))
+```
+
+```{r correlation-forest, fig.cap="Meta-analysis displayed on the correlation scale."}
+forest_meta(cor_fit)
+```
+
+Correlations must lie strictly between -1 and 1, and each study must have more
+than three observations. The function checks these conditions before fitting.
+
+## Meta-analysis of incidence rates
+
+`meta_rate()` pools event rates while accounting for differing amounts of
+person-time. `lungcancer` reports deaths and person-years among smokers. Rates
+are displayed per 100,000 person-years.
+
+```{r rate-model}
+rate_fit <- meta_rate(
+  lungcancer, event = "d.smokers", time = "py.smokers",
+  studylab = "study", irscale = 100000, irunit = "person-years"
+)
+summary(rate_fit)
+```
+
+```{r rate-table, results='asis'}
+render_gt(table_meta(rate_fit))
+```
+
+```{r rate-forest, fig.cap="Incidence-rate meta-analysis per 100,000 person-years."}
+forest_meta(rate_fit)
+```
+
+Zero-event studies are retained using the requested continuity correction.
+The original events and person-time remain in the fitted object's analysis data
+for audit and reporting.
+
+## Choosing a function
+
+Use `meta_generic()` for an effect estimate with a standard error, variance, or
+confidence interval; `meta_cor()` for correlations and sample sizes; and
+`meta_rate()` for event counts with person-time. For raw binary, continuous, or
+proportion data, use `meta_ratio()`, `meta_mean()`, or `meta_prop()` instead.

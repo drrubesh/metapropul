@@ -1,0 +1,116 @@
+---
+title: "Case study: BCG vaccine effectiveness"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Case study: BCG vaccine effectiveness}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 9,
+  fig.height = 6, message = FALSE, warning = FALSE)
+render_gt <- function(expr) {
+  invisible(utils::capture.output(table <- force(expr)))
+  cat(gt::as_raw_html(table))
+}
+```
+
+This case study asks whether BCG vaccination reduces tuberculosis and whether
+the effect differs by allocation method. It demonstrates the complete
+two-group binary-outcome workflow.
+
+```{r}
+library(metapropul)
+data("dat_bcg", package = "metapropul")
+dat_bcg$ncon <- dat_bcg$cpos + dat_bcg$cneg
+```
+
+## Random-effects odds ratios and subgroups
+
+```{r}
+bcg_or <- meta_ratio(
+  dat_bcg,
+  event.e = "tpos", n.e = "npos",
+  event.c = "cpos", n.c = "ncon",
+  studylab = "author", subgroup = "alloc",
+  measure = "OR", model = "random",
+  tau_method = "REML", ci_method = "HK"
+)
+summary(bcg_or)
+```
+
+The subgroup rows are reported separately; the subgroup-difference test should
+not be interpreted as proof that subgroups are equivalent when non-significant.
+
+```{r}
+bcg_or$meta.subgroup.summary
+```
+
+For comparison, a fixed-effect risk-ratio analysis uses the same raw data.
+
+```{r}
+bcg_rr_fixed <- meta_ratio(
+  dat_bcg, "tpos", "npos", "cpos", "ncon",
+  studylab = "author", subgroup = "alloc",
+  measure = "RR", model = "fixed"
+)
+summary(bcg_rr_fixed)
+```
+
+## Main results and forest plot
+
+```{r results-table, results='asis'}
+render_gt(table_meta(bcg_or, title = "BCG vaccination and tuberculosis"))
+```
+
+```{r forest, fig.height=8}
+forest_meta(bcg_or, title = "BCG vaccination by allocation method")
+```
+
+## Leave-one-out influence analysis
+
+```{r influence-table, results='asis'}
+render_gt(table_influence(bcg_or))
+```
+
+```{r influence-forest, fig.height=7}
+forest_influence(bcg_or)
+```
+
+## Cumulative evidence
+
+The cumulative analysis uses study order in the fitted object. In an applied
+review, arrange the source data by publication year before fitting when a
+chronological cumulative analysis is intended.
+
+```{r cumulative-table, results='asis'}
+render_gt(table_cumulative_meta(bcg_or))
+```
+
+```{r cumulative-forest, fig.height=7}
+forest_cumulative(bcg_or)
+```
+
+## Heterogeneity and contribution
+
+```{r heterogeneity}
+plot_heterogeneity(bcg_or)
+```
+
+```{r baujat}
+plot_baujat(bcg_or)
+```
+
+## Publication-bias assessment
+
+Formal asymmetry statistics can be unavailable for some fitted models. The
+function reports that limitation and still returns the supported diagnostics.
+
+```{r publication-bias, fig.width=9, fig.height=7}
+publication_bias(bcg_or, plot_method = "original")
+```
+
+The numerical results, influence patterns, heterogeneity, and possible
+small-study effects should be interpreted together rather than using any
+single diagnostic as a decision rule.

@@ -24,9 +24,8 @@ bubble_plot(
 model has multiple predictors. If \code{NULL} and only one predictor
 exists, that predictor is used automatically.}
 
-\item{title}{Optional character string printed above the plot (or grid). If
-\code{NULL} (default), an auto-constructed title is used. Set to
-\code{""} to suppress.}
+\item{title}{Optional character string printed above the plot (or grid). No
+title is drawn when \code{NULL} (the default).}
 
 \item{plot_all_levels}{Logical. For categorical moderators, produce a panel
 per dummy variable (default \code{TRUE}).}

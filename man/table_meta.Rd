@@ -12,11 +12,10 @@ table_meta(
 )
 }
 \arguments{
-\item{meta_result}{A \code{meta_ratio}, \code{meta_mean}, or
-\code{meta_prop} object.}
+\item{meta_result}{A supported metapropul meta-analysis object.}
 
-\item{title}{Optional character string for the table title. If \code{NULL}
-(default), an auto-constructed title is used.}
+\item{title}{Optional character string for the table title. No title is
+added when \code{NULL} (the default).}
 
 \item{save_as}{One of \code{"viewer"} (default), \code{"docx"} (Word), or
 \code{"pdf"}.}
@@ -28,8 +27,8 @@ created in \code{tempdir()}.}
 A \code{gt} table (invisibly when saving to file).
 }
 \description{
-Produces a publication-ready table from a \code{meta_ratio},
-\code{meta_mean}, or \code{meta_prop} object. Includes study-level
+Produces a publication-ready table from a supported metapropul
+meta-analysis object. Includes study-level
 estimates, a pooled row, and a footnote explaining I\eqn{^2}.
 }
 \examples{

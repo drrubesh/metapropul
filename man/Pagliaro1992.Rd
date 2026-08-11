@@ -5,7 +5,17 @@
 \alias{Pagliaro1992}
 \title{Portal Vein Thrombosis After Splenectomy Dataset}
 \format{
-An object of class \code{data.frame} (inherits from \code{pairwise}) with 28 rows and 8 columns.
+A data frame with 28 rows and 8 variables:
+\describe{
+\item{id}{Study identifier}
+\item{treat.exp}{Experimental treatment group label}
+\item{logOR}{Log odds ratio}
+\item{selogOR}{Standard error of the log odds ratio}
+\item{bleed.exp}{Number of bleeding events in the experimental group}
+\item{n.exp}{Sample size in the experimental group}
+\item{bleed.plac}{Number of bleeding events in the placebo/control group}
+\item{n.plac}{Sample size in the placebo/control group}
+}
 }
 \source{
 Pagliaro et al., 1992. Adapted for meta-analysis teaching purposes.
@@ -18,18 +28,6 @@ This dataset contains data from studies evaluating the incidence of portal vein 
 following splenectomy.
 }
 \details{
-#' @format A data frame with 28 rows and 8 variables:
-\describe{
-\item{id}{Study identifier}
-\item{treat.exp}{Experimental treatment group label}
-\item{logOR}{Log odds ratio}
-\item{selogOR}{Standard error of the log odds ratio}
-\item{bleed.exp}{Number of bleeding events in the experimental group}
-\item{n.exp}{Sample size in the experimental group}
-\item{bleed.plac}{Number of bleeding events in the placebo/control group}
-\item{n.plac}{Sample size in the placebo/control group}
-}
-
 Useful for demonstrating meta-analyses involving rare event binary outcomes.
 }
 \examples{

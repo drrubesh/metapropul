@@ -1,0 +1,50 @@
+---
+title: "Getting started with metapropul"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with metapropul}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+`metapropul` provides one workflow from model fitting to publication-ready
+reporting. Rather than repeat isolated function examples, the documentation is
+organised around reproducible case studies using datasets bundled with the
+package.
+
+```{r}
+library(metapropul)
+```
+
+## Choose a case study
+
+1. [BCG vaccine effectiveness](case-ratio-bcg.html) uses `meta_ratio()` and
+   demonstrates subgroup analysis, fixed and random effects, tables, forest
+   plots, cumulative and influence analyses, heterogeneity, and publication
+   bias.
+2. [Tuberculosis event proportions and meta-regression](case-proportion-regression.html)
+   uses `meta_prop()` and demonstrates transformations, subgroup analysis,
+   moderator preprocessing, Knapp--Hartung inference, predictions,
+   collinearity, influence diagnostics, and all regression plots.
+3. [Continuous outcomes and study appraisal](case-mean-appraisal.html) uses
+   `meta_mean()` and demonstrates MD/SMD models, cumulative and influence
+   results, DOI assessment, and risk-of-bias figures.
+4. [Umbrella reviews without pooling meta-analyses](umbrella-reviews.html)
+   covers credibility classification, GRADE recording, review quality,
+   primary-study diagnostics, overlap, and selection sensitivity.
+
+## Shared design
+
+Core analysis objects can be passed directly to the package's table and plot
+functions. Study labels are matched explicitly in meta-regression, subgroup
+results are taken from the fitted meta-analysis object, and ratio/proportion
+outputs are back-transformed for interpretation.
+
+Subgroup analysis is opt-in. All core functions default to `subgroup = NULL`,
+and the GUI displays **None** even when the uploaded or bundled dataset contains
+a possible subgroup column. This prevents an unintended subgroup model from
+being fitted simply because such a column exists.
+
+The repository also provides non-vignette audit scripts under
+`tools/manual_cases/`. These save every table and figure to disk and perform
+explicit structural checks.

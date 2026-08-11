@@ -6,7 +6,9 @@ test_that("meta_prop: returns correct class and structure", {
     r,
     c(
       "meta", "table", "meta.summary", "meta.subgroup.summary",
-      "influence.analysis", "influence.meta", "model",
+      "influence.analysis", "influence.meta", "subgroup_test",
+      "analysis_data", "excluded_data", "exclusion_log", "label_audit",
+      "settings", "model",
       "measure", "sm", "tau_method", "ci_method", "subgroup"
     )
   )
@@ -41,6 +43,17 @@ test_that("meta_prop: fixed model path works", {
 test_that("meta_prop: PFT transformation is accepted", {
   expect_equal(.fix_prop_pft$sm, "PFT")
   expect_s3_class(.fix_prop_pft, "meta_prop")
+})
+
+test_that("meta_prop supports a logistic GLMM", {
+  fit <- suppressWarnings(meta_prop(dat_bcg, "tpos", "npos", "author",
+    pool_method = "glmm", ci_method = "classic",
+    duplicate_action = "make_unique"))
+  expect_equal(fit$settings$pool_method, "glmm")
+  expect_equal(fit$tau_method, "ML")
+  expect_true(is.finite(fit$meta.summary$Estimate))
+  expect_error(meta_prop(dat_bcg, "tpos", "npos", pool_method = "glmm",
+    model = "fixed"), "requires")
 })
 
 test_that("meta_prop: meta.summary contains expected fields and prediction interval", {
@@ -80,6 +93,47 @@ test_that("meta_prop: subgroup estimates are percentages", {
   expect_true(all(s$Estimate >= 0 & s$Estimate <= 100))
   expect_true(all(s$lower >= 0 & s$lower <= 100))
   expect_true(all(s$upper >= 0 & s$upper <= 100))
+})
+
+test_that("meta_prop: PFT tables use the double-arcsine inverse", {
+  expected <- metapropul:::.backtransform_prop(
+    .fix_prop_pft$meta$TE, "PFT"
+  ) * 100
+  expect_equal(.fix_prop_pft$table$Proportion, expected)
+})
+
+test_that("meta_prop: subgroup analysis rejects a single observed level", {
+  one_group <- transform(dat_bcg, one_group = "A")
+  expect_error(
+    meta_prop(one_group, "tpos", "npos", subgroup = "one_group"),
+    "at least two observed subgroup levels"
+  )
+})
+
+test_that("meta_prop supports explicit singleton subgroup policies", {
+  d <- data.frame(event = c(1, 2, 3, 4, 5), n = rep(10, 5),
+    study = letters[1:5], group = c("single", "B", "B", "C", "C"))
+  expect_error(meta_prop(d, "event", "n", "study", "group",
+    singleton_action = "error"), "fewer than two")
+  expect_warning(fit <- meta_prop(d, "event", "n", "study", "group",
+    singleton_action = "omit", ci_method = "classic"), "excluded")
+  expect_equal(nrow(fit$analysis_data), 4L)
+  expect_match(fit$exclusion_log$Reason, "Singleton subgroup")
+})
+
+test_that("meta_prop: subgroup missing assignments are audited or rejected", {
+  missing_group <- transform(dat_bcg, group = rep(c("A", "B"), length.out = nrow(dat_bcg)))
+  missing_group$group[1] <- NA_character_
+  expect_warning(
+    fit <- meta_prop(missing_group, "tpos", "npos", subgroup = "group"),
+    "excluded"
+  )
+  expect_equal(nrow(fit$exclusion_log), 1L)
+  expect_error(
+    meta_prop(missing_group, "tpos", "npos", subgroup = "group",
+      missing_action = "error"),
+    "contain missing analysis data"
+  )
 })
 
 test_that("meta_prop: influence.analysis is a tidy data frame", {
@@ -154,4 +208,12 @@ test_that("summary.meta_prop: PFT note is present for PFT models", {
 test_that("summary.meta_prop: fixed model note is printed", {
   out <- capture_output(summary(.fix_prop_fixed))
   expect_match(out, "Common-effect")
+})
+
+test_that("summary.meta_prop handles GLMM heterogeneity test vectors", {
+  fit <- meta_prop(
+    dat_bcg, event = "tpos", n = "npos", studylab = "author",
+    pool_method = "glmm", duplicate_action = "make_unique"
+  )
+  expect_output(summary(fit), "Q = ")
 })

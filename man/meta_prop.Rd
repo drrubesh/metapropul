@@ -15,6 +15,10 @@ meta_prop(
   tau_method = "REML",
   ci_method = "HK",
   prediction_interval = TRUE,
+  missing_action = c("exclude", "error"),
+  duplicate_action = c("warn", "error", "make_unique"),
+  singleton_action = c("warn", "retain", "omit", "error"),
+  pool_method = c("inverse", "glmm"),
   verbose = FALSE
 )
 }
@@ -27,7 +31,11 @@ meta_prop(
 
 \item{studylab}{Column name for study labels (optional).}
 
-\item{subgroup}{Column name for subgroup variable (optional).}
+\item{subgroup}{Optional single character string naming a completely
+observed subgroup variable. At least two levels are required. Levels with
+only one study are allowed with a warning because their within-subgroup
+heterogeneity is not estimable. The default \code{NULL} performs no subgroup
+analysis.}
 
 \item{model}{\code{"random"} (default) or \code{"fixed"}.}
 
@@ -45,10 +53,35 @@ proportion percentage scale.}
 \item{prediction_interval}{Logical. Compute a prediction interval (default
 \code{TRUE}).}
 
+\item{missing_action}{How incomplete analysis rows are handled: \code{"exclude"}
+records and removes them, while \code{"error"} stops before fitting.}
+
+\item{duplicate_action}{How duplicate study labels are handled: \code{"warn"}
+makes them unique and records the change, \code{"error"} stops, and
+\code{"make_unique"} records the change without warning.}
+
+\item{singleton_action}{Handling of subgroup levels containing one study:
+\code{"warn"}, \code{"retain"}, \code{"omit"}, or \code{"error"}.}
+
+\item{pool_method}{\code{"inverse"} for inverse-variance pooling or \code{"glmm"}
+for a random-intercept logistic GLMM. GLMM is available only with
+\code{sm = "PLOGIT"} and \code{model = "random"}.}
+
 \item{verbose}{Logical. Print progress messages (default \code{FALSE}).}
 }
 \value{
-An object of class \code{"meta_prop"}.
+An object of class \code{"meta_prop"}, a list containing:
+\describe{
+\item{meta}{The fitted \pkg{meta} object on its analysis scale.}
+\item{table}{Study estimates, confidence limits, weights, and subgroup
+assignments on the percentage scale.}
+\item{meta.summary}{The pooled estimate, confidence interval, prediction
+interval, I-squared, and tau-squared.}
+\item{meta.subgroup.summary}{One pooled row per subgroup, or \code{NULL}.}
+\item{influence.analysis}{A tidy leave-one-out results table.}
+\item{influence.meta}{The underlying \code{metainf} object.}
+\item{model,measure,sm,tau_method,ci_method,subgroup}{Analysis settings.}
+}
 }
 \description{
 Performs a meta-analysis of proportions using logit (\code{"PLOGIT"}) or
@@ -57,6 +90,24 @@ Freeman-Tukey double arcsine (\code{"PFT"}) transformation via
 back-transformed scale. Prediction intervals, subgroup analysis, and
 leave-one-out influence analysis are included by default.
 }
+\details{
+The model is fitted by \code{meta::metaprop()} using inverse-variance
+weighting. PLOGIT results are back-transformed with the inverse logit. PFT
+results use the approximate inverse Freeman--Tukey double-arcsine transform;
+values returned by this package are percentages. For subgroup analyses,
+the overall model and subgroup models are taken from the same fitted object,
+and the reported subgroup-difference test is available through
+\code{summary()}.
+}
+\section{CSV and Excel columns}{
+
+Use one row per study. The event and total-sample columns must be numeric,
+with \verb{0 <= event <= n} and \code{n > 0}. A study-label column and a completely
+observed subgroup column are optional. Column headers need not literally be
+\code{event}, \code{n}, \code{studylab}, or \code{subgroup}; pass the actual header names to the
+corresponding arguments.
+}
+
 \examples{
 \donttest{
 data(dat_bcg, package = "metapropul")

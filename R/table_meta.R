@@ -1,13 +1,12 @@
 #' Summary table for meta-analysis results
 #'
-#' Produces a publication-ready table from a \code{meta_ratio},
-#' \code{meta_mean}, or \code{meta_prop} object. Includes study-level
+#' Produces a publication-ready table from a supported metapropul
+#' meta-analysis object. Includes study-level
 #' estimates, a pooled row, and a footnote explaining I\eqn{^2}.
 #'
-#' @param meta_result A \code{meta_ratio}, \code{meta_mean}, or
-#'   \code{meta_prop} object.
-#' @param title Optional character string for the table title. If \code{NULL}
-#'   (default), an auto-constructed title is used.
+#' @param meta_result A supported metapropul meta-analysis object.
+#' @param title Optional character string for the table title. No title is
+#'   added when `NULL` (the default).
 #' @param save_as One of \code{"viewer"} (default), \code{"docx"} (Word), or
 #'   \code{"pdf"}.
 #' @param filename Optional file path. If \code{NULL}, a timestamped file is
@@ -34,9 +33,10 @@ table_meta <- function(meta_result,
                        filename = NULL) {
   save_as <- match.arg(save_as)
 
-  if (!inherits(meta_result, c("meta_ratio", "meta_mean", "meta_prop"))) {
+  if (!inherits(meta_result, c("meta_ratio", "meta_mean", "meta_prop",
+      "meta_generic", "meta_cor", "meta_rate"))) {
     stop(
-      "Only supports meta_ratio, meta_mean, or meta_prop objects.",
+      "Only supports metapropul meta-analysis objects.",
       call. = FALSE
     )
   }
@@ -45,8 +45,10 @@ table_meta <- function(meta_result,
     .table_meta_ratio(meta_result, title)
   } else if (inherits(meta_result, "meta_mean")) {
     .table_meta_mean(meta_result, title)
-  } else {
+  } else if (inherits(meta_result, "meta_prop")) {
     .table_meta_prop(meta_result, title)
+  } else {
+    .table_meta_additional(meta_result, title)
   }
 
   if (identical(save_as, "viewer")) {
@@ -71,6 +73,28 @@ table_meta <- function(meta_result,
   invisible(gt_tbl)
 }
 
+#' @keywords internal
+.table_meta_additional <- function(meta_result, title = NULL) {
+  studies <- meta_result$table
+  pooled <- meta_result$meta.summary
+  display <- tibble::tibble(
+    Study = c(studies$Study, "Pooled"),
+    `Weight (%)` = c(studies$weight, NA_real_),
+    `Estimate [95% CI]` = c(
+      sprintf("%.3f [%.3f, %.3f]", studies$Estimate, studies$lower,
+        studies$upper),
+      sprintf("%.3f [%.3f, %.3f]", pooled$Estimate, pooled$lower,
+        pooled$upper)
+    )
+  )
+  gt::gt(display) |>
+    .gt_optional_title(title) |>
+    gt::fmt_number(columns = "Weight (%)", decimals = 1) |>
+    gt::tab_style(style = gt::cell_text(weight = "bold"),
+      locations = gt::cells_body(rows = Study == "Pooled")) |>
+    gt::tab_source_note(.i2_footnote)
+}
+
 # -- Shared helpers ------------------------------------------------------------
 
 .i2_footnote <- paste0(
@@ -79,23 +103,14 @@ table_meta <- function(meta_result,
   "on study precision and number of studies."
 )
 
-.auto_title <- function(measure, k) {
-  measure_str <- switch(measure,
-    OR = "Odds Ratio",
-    RR = "Risk Ratio",
-    HR = "Hazard Ratio",
-    MD = "Mean Difference",
-    SMD = "Standardised Mean Difference",
-    Proportion = "Proportion",
-    measure
-  )
-
-  sprintf(
-    "Meta-analysis \u2014 %s (k\u00a0=\u00a0%d stud%s)",
-    measure_str,
-    k,
-    if (k == 1L) "y" else "ies"
-  )
+# Add a heading only when the caller explicitly requests one.
+#' @keywords internal
+.gt_optional_title <- function(table, title = NULL) {
+  if (!is.null(title) && length(title) == 1L && nzchar(title)) {
+    gt::tab_header(table, title = title)
+  } else {
+    table
+  }
 }
 
 .pooled_vals <- function(m, model) {
@@ -149,15 +164,9 @@ table_meta <- function(meta_result,
     )
   )
 
-  tbl_title <- if (!is.null(title)) {
-    title
-  } else {
-    .auto_title(meta_result$measure, k)
-  }
-
   dplyr::bind_rows(df, pooled_row) |>
     gt::gt() |>
-    gt::tab_header(title = tbl_title) |>
+    .gt_optional_title(title) |>
     gt::cols_label(`Estimate [95% CI]` = col_label) |>
     gt::tab_style(
       style = gt::cell_text(weight = "bold"),
@@ -222,15 +231,9 @@ table_meta <- function(meta_result,
     )
   )
 
-  tbl_title <- if (!is.null(title)) {
-    title
-  } else {
-    .auto_title(meta_result$measure, k)
-  }
-
   dplyr::bind_rows(df, pooled_row) |>
     gt::gt() |>
-    gt::tab_header(title = tbl_title) |>
+    .gt_optional_title(title) |>
     gt::cols_label(`Estimate [95% CI]` = col_label) |>
     gt::tab_style(
       style = gt::cell_text(weight = "bold"),
@@ -278,15 +281,9 @@ table_meta <- function(meta_result,
     )
   )
 
-  tbl_title <- if (!is.null(title)) {
-    title
-  } else {
-    .auto_title("Proportion", k)
-  }
-
   dplyr::bind_rows(df, pooled_row) |>
     gt::gt() |>
-    gt::tab_header(title = tbl_title) |>
+    .gt_optional_title(title) |>
     gt::tab_style(
       style = gt::cell_text(weight = "bold"),
       locations = gt::cells_body(rows = Study == "Pooled")

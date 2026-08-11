@@ -38,16 +38,6 @@ test_that(".fmt_pval formats p-values correctly", {
   expect_equal(metapropul:::.fmt_pval(0.0005), "< 0.001")
 })
 
-test_that(".auto_title creates expected labels", {
-  ttl_or <- metapropul:::.auto_title("OR", 3)
-  ttl_prop <- metapropul:::.auto_title("Proportion", 1)
-
-  expect_match(ttl_or, "Odds Ratio")
-  expect_match(ttl_or, "3")
-  expect_match(ttl_prop, "Proportion")
-  expect_match(ttl_prop, "1")
-})
-
 test_that(".pooled_vals returns random-effects slots", {
   x <- metapropul:::.pooled_vals(.fix_ratio_events$meta, "random")
 
@@ -183,8 +173,8 @@ test_that("meta_ratio, meta_mean, and meta_prop all return study-level tables", 
 })
 
 test_that("influence objects exist for all core model families", {
-  expect_s3_class(.fix_ratio_events$influence.analysis, "metainf")
-  expect_s3_class(.fix_mean$influence.analysis, "metainf")
+  expect_s3_class(.fix_ratio_events$influence.meta, "metainf")
+  expect_s3_class(.fix_mean$influence.meta, "metainf")
   expect_s3_class(.fix_prop$influence.meta, "metainf")
 })
 

@@ -4,7 +4,18 @@
 \alias{meta_reg}
 \title{Meta-regression}
 \usage{
-meta_reg(meta_object, data, moderators, studylab)
+meta_reg(
+  meta_object,
+  data,
+  moderators,
+  studylab,
+  reference_levels = NULL,
+  center = NULL,
+  scale = NULL,
+  test = c("z", "knha"),
+  method = NULL,
+  min_studies_per_parameter = 10
+)
 }
 \arguments{
 \item{meta_object}{A fitted object from \code{meta_ratio()},
@@ -18,9 +29,32 @@ meta_reg(meta_object, data, moderators, studylab)
 \item{studylab}{Character string naming the study label column in
 \code{data}. This is required so studies are matched safely by
 label.}
+
+\item{reference_levels}{Optional named character vector or named list mapping
+categorical moderators to their desired reference levels, for example
+\code{c(region = "Europe")}.}
+
+\item{center}{Optional character vector naming numeric moderators to
+mean-center before fitting.}
+
+\item{scale}{Optional character vector naming numeric moderators to
+standardise to mean zero and unit standard deviation. A variable cannot be
+listed in both \code{center} and \code{scale}.}
+
+\item{test}{Inference method passed to \code{metafor::rma()}: \code{"z"}
+(default) or \code{"knha"} for Knapp--Hartung adjustment.}
+
+\item{method}{Between-study variance estimator passed to
+\code{\link[metafor:rma]{metafor::rma()}}. The default inherits the estimator requested by the
+source meta-analysis when it is supported by \code{metafor}.}
+
+\item{min_studies_per_parameter}{Positive number used to warn when the
+number of included studies per fitted coefficient is small. Default 10.}
 }
 \value{
-An object of class \code{"meta_reg"}.
+An object of class \code{"meta_reg"} containing the fitted
+\code{metafor::rma} model, coefficient table, heterogeneity summary,
+R-squared analog, excluded study labels, measure metadata, and call.
 }
 \description{
 Performs meta-regression on a fitted \code{meta_ratio()},
@@ -33,7 +67,23 @@ moderator effects are additionally shown on a back-transformed scale.
 For ratio and proportion models, the intercept is not
 back-transformed by default because it is often not interpretable
 unless continuous moderators are centered.
+
+Study labels are matched rather than assumed to be in the same row order.
+Studies with missing moderator values are excluded with a warning. Ratio
+coefficients are fitted on the log scale and proportion coefficients on the
+logit scale; non-intercept coefficients are additionally back-transformed.
+The R-squared analog is the proportional reduction in tau-squared relative
+to the original meta-analysis and is truncated to the interval 0--100\%.
 }
+\section{CSV and Excel columns}{
+
+Moderator columns are read from the same study-level dataset used for the
+primary meta-analysis. A study-label column is required and must match the
+fitted studies. Continuous moderators must be numeric; categorical
+moderators may be character or factor. Subgroup analysis is not required
+to fit meta-regression.
+}
+
 \examples{
 \donttest{
 data(dat_bcg, package = "metapropul")

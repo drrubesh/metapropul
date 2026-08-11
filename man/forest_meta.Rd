@@ -4,11 +4,12 @@
 \alias{forest_meta}
 \title{Forest plot for meta-analysis results}
 \usage{
-forest_meta(x, ...)
+forest_meta(x, title = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
-object.}
+\item{x}{A supported metapropul meta-analysis object.}
+
+\item{title}{Optional plot title. No title is drawn when \code{NULL} (default).}
 
 \item{...}{Additional arguments passed to the class-specific plotting
 method.}
@@ -17,9 +18,18 @@ method.}
 Invisibly returns \code{TRUE}.
 }
 \description{
-Produces a publication-ready forest plot from a \code{meta_ratio},
-\code{meta_mean}, or \code{meta_prop} object. The appropriate plotting
+Produces a publication-ready forest plot from a supported metapropul
+meta-analysis object. The appropriate plotting
 method is selected automatically based on the class of \code{x}.
+}
+\details{
+The class-specific method preserves the original fitted model, including
+subgroup estimates, tau-squared estimator, and random-effects confidence
+method. Plot width, height, font size, and row spacing are selected from the
+study count; plots with up to 200 studies are compressed automatically.
+Explicit \code{width} or \code{height} values supplied through \code{...}
+override the corresponding automatic decision. PDF export is recommended
+when individual study rows must remain readable at large study counts.
 }
 \examples{
 \donttest{

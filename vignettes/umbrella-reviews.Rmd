@@ -1,0 +1,170 @@
+---
+title: "Umbrella reviews without pooling meta-analyses"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Umbrella reviews without pooling meta-analyses}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+render_gt <- function(expr) {
+  invisible(utils::capture.output(table <- force(expr)))
+  cat(gt::as_raw_html(table))
+}
+```
+
+The umbrella-review functions preserve each published meta-analysis as a
+separate result. They do not combine reviews into a new pooled estimate.
+
+```{r}
+library(metapropul)
+
+reviews <- data.frame(
+  outcome = rep(c("Cardiovascular disease", "Mortality"), each = 2),
+  review = c("Review A", "Review B", "Review C", "Review D"),
+  estimate = c(0.78, 0.83, 1.12, 1.06),
+  lower = c(0.70, 0.75, 1.02, 0.97),
+  upper = c(0.87, 0.92, 1.23, 1.16),
+  studies = c(14, 11, 8, 12),
+  participants = c(3000, 2500, 1800, 2200),
+  i2 = c(20, 45, 55, 40),
+  p = c(1e-7, 2e-5, 0.01, 0.12),
+  pred_lower = c(0.71, 0.69, 0.98, 0.94),
+  pred_upper = c(0.88, 0.98, 1.28, 1.20),
+  year = c(2022, 2024, 2020, 2025),
+  quality = c("High", "Moderate", "Low", "High"),
+  risk = c("Low", "Some concerns", "High", "Low")
+)
+
+umbrella <- umbrella_review(
+  reviews, "outcome", "review", "estimate", "lower", "upper",
+  studies = "studies", participants = "participants", i2 = "i2",
+  p_value = "p", pred_lower = "pred_lower", pred_upper = "pred_upper",
+  year = "year", quality = "quality",
+  risk_of_bias = "risk"
+)
+umbrella
+```
+
+## Credibility, GRADE, and review quality
+
+These are intentionally distinct assessments:
+
+```{r}
+credibility <- classify_umbrella(umbrella)
+grade <- grade_umbrella(
+  umbrella, starting_certainty = "high",
+  risk_of_bias = c("not_serious", "serious", "very_serious", "not_serious")
+)
+quality <- assess_review_quality(umbrella, tool = "AMSTAR2", overall = "quality")
+
+credibility[, c("Outcome", "Review", "EvidenceClass")]
+grade[, c("Outcome", "Review", "GRADE")]
+quality
+```
+
+`classify_umbrella()` applies quantitative credibility rules. `grade_umbrella()`
+records reviewer-supplied GRADE judgements; it does not infer GRADE domains from
+statistical results. `assess_review_quality()` records AMSTAR 2 or ROBIS results.
+
+```{r umbrella-table, results='asis'}
+render_gt(table_umbrella(umbrella, credibility, grade))
+```
+
+```{r umbrella-plot, fig.width=9, fig.height=5.5}
+plot_umbrella(umbrella, credibility)
+```
+
+The plot contains one interval per reported meta-analysis and deliberately has
+no pooled diamond.
+
+## Diagnostics from primary studies
+
+When primary-study estimates have been extracted, diagnostics are calculated
+separately inside each source review. The example data below are deterministic
+teaching values rather than a reconstruction of a published review.
+
+```{r}
+primary <- do.call(rbind, lapply(seq_len(nrow(reviews)), function(i) {
+  se <- seq(0.10, 0.16, length.out = 5)
+  centre <- log(reviews$estimate[i])
+  yi <- centre + c(-0.08, -0.03, 0, 0.04, 0.09)
+  data.frame(
+    outcome = reviews$outcome[i], review = reviews$review[i],
+    study = paste0(reviews$review[i], "-S", seq_along(se)),
+    effect = exp(yi), lower = exp(yi - 1.96 * se),
+    upper = exp(yi + 1.96 * se),
+    participants = seq(400, 1200, length.out = 5)
+  )
+}))
+
+primary_diagnostics <- diagnose_umbrella_primary(
+  primary, "outcome", "review", "study", "effect", "lower", "upper",
+  participants = "participants", min_egger = 3
+)
+primary_diagnostics$summary
+classify_umbrella(umbrella, primary_diagnostics)[,
+  c("Outcome", "Review", "EvidenceClass")]
+```
+
+## Primary-study overlap
+
+```{r}
+membership <- data.frame(
+  outcome = rep("Cardiovascular disease", 8),
+  review = rep(c("Review A", "Review B"), each = 4),
+  study = c("S1", "S2", "S3", "S4", "S2", "S3", "S4", "S5")
+)
+
+overlap <- study_overlap(membership, "review", "study", "outcome")
+overlap$overall
+overlap$pairwise
+```
+
+`plot_study_overlap()` displays the citation matrix, pairwise Jaccard overlap,
+or corrected covered area. `sensitivity_umbrella_overlap()` compares which
+reported review would be retained under prespecified selection strategies; it
+does not pool the selected reviews.
+
+```{r overlap-plot, fig.width=7, fig.height=4.5}
+plot_study_overlap(overlap, type = "citation_matrix")
+```
+
+```{r jaccard-plot, fig.width=7, fig.height=4.5}
+plot_study_overlap(overlap, type = "jaccard")
+```
+
+```{r cca-plot, fig.width=7, fig.height=4.5}
+plot_study_overlap(overlap, type = "cca")
+```
+
+The triangular CCA heatmap follows the convention used by `ccaR`: pairwise CCA
+percentages appear below the diagonal, while grey diagonal cells show the
+number of unique primary studies in each review. For several outcomes, an
+overall summary bar plot is also available.
+
+```{r cca-summary-plot, fig.width=7, fig.height=4.5}
+plot_study_overlap(overlap, type = "cca_summary")
+```
+
+## Review-selection sensitivity
+
+Selection strategies choose one already reported result per outcome; they do
+not calculate a synthesis across reviews.
+
+```{r}
+sensitivity_umbrella_overlap(
+  umbrella, overlap,
+  strategies = c(
+    "highest_quality", "lowest_risk_of_bias", "most_recent",
+    "most_comprehensive", "largest_participant_count", "lowest_overlap",
+    "user_selected"
+  ),
+  user_selected = c(
+    "Cardiovascular disease" = "Review B",
+    "Mortality" = "Review D"
+  )
+)[, c("Outcome", "Review", "Strategy", "Estimate")]
+```

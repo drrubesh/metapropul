@@ -18,9 +18,8 @@ doi_plot(
 \item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 object.}
 
-\item{title}{Optional character string for the plot title. If \code{NULL}
-(default), an auto-constructed title is used. Set to \code{""} to
-suppress.}
+\item{title}{Optional character string for the plot title. No title is
+drawn when \code{NULL} (the default).}
 
 \item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
 \code{"png"}, or \code{"tiff"}.}

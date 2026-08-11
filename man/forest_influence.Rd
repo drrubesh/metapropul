@@ -7,7 +7,7 @@
 forest_influence(
   object,
   title = NULL,
-  layout = "RevMan5",
+  layout = "meta",
   prediction = FALSE,
   save_as = c("viewer", "pdf", "png", "tiff"),
   filename = NULL,
@@ -20,11 +20,10 @@ forest_influence(
 \item{object}{A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 object.}
 
-\item{title}{Optional character string printed above the plot. If
-\code{NULL} (default), an auto-constructed title is used. Set to
-\code{""} to suppress.}
+\item{title}{Optional character string printed above the plot. No title is
+drawn when \code{NULL} (the default).}
 
-\item{layout}{Layout style. One of \code{"RevMan5"} (default),
+\item{layout}{Layout style. One of \code{"meta"} (default),
 \code{"JAMA"}, \code{"BMJ"}, or \code{"meta"}.}
 
 \item{prediction}{Logical; if \code{TRUE}, show prediction intervals.

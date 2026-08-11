@@ -6,6 +6,8 @@ test_that("meta_ratio: event-count path returns correct class and structure", {
     r,
     c(
       "meta", "table", "meta.subgroup.summary", "influence.analysis",
+      "influence.meta", "subgroup_test", "analysis_data", "excluded_data",
+      "exclusion_log", "label_audit", "settings",
       "model", "measure", "tau_method", "ci_method", "subgroup"
     )
   )
@@ -47,7 +49,7 @@ test_that("meta_ratio: RR measure stored correctly", {
 
 test_that("meta_ratio: HR is accepted with pre-computed effect sizes", {
   r <- meta_ratio(
-    data = dat_bcg,
+    data = bcg_clean,
     effect = "or_est",
     lower = "or_lo",
     upper = "or_hi",
@@ -62,7 +64,7 @@ test_that("meta_ratio: HR is accepted with pre-computed effect sizes", {
 test_that("meta_ratio: HR errors when raw event counts are supplied", {
   expect_error(
     meta_ratio(
-      data = dat_bcg,
+      data = transform(dat_bcg, ncon = cpos + cneg),
       event.e = "tpos", n.e = "npos",
       event.c = "cpos", n.c = "ncon",
       studylab = "author",
@@ -84,9 +86,25 @@ test_that("meta_ratio: pre-computed effect path works", {
   ))
 })
 
+test_that("meta_ratio accepts log-ratio estimates with standard errors", {
+  dat <- data.frame(
+    study = paste("Study", 1:4),
+    log_or = log(c(0.70, 0.85, 1.10, 1.25)),
+    se = c(0.18, 0.15, 0.20, 0.17)
+  )
+  fit <- meta_ratio(dat, effect = "log_or", se = "se",
+    effect_scale = "log", studylab = "study", measure = "OR")
+  expect_s3_class(fit, "meta_ratio")
+  expect_equal(fit$meta$TE, dat$log_or)
+  expect_equal(fit$meta$seTE, dat$se)
+  expect_identical(fit$settings$uncertainty, "se")
+  expect_error(meta_ratio(dat, effect = "log_or", se = "se"),
+    "effect_scale")
+})
+
 test_that("meta_ratio: ci_level changes SE calculation", {
   r90 <- meta_ratio(
-    data = dat_bcg,
+    data = bcg_clean,
     effect = "or_est", lower = "or_lo", upper = "or_hi",
     studylab = "author",
     ci_level = 0.90
@@ -122,7 +140,7 @@ test_that("meta_ratio: prediction interval stored on meta object when enabled", 
 
 test_that("meta_ratio: prediction_interval = FALSE suppresses prediction interval", {
   r <- meta_ratio(
-    data = dat_bcg,
+    data = transform(dat_bcg, ncon = cpos + cneg),
     event.e = "tpos", n.e = "npos",
     event.c = "cpos", n.c = "ncon",
     studylab = "author",
@@ -132,14 +150,15 @@ test_that("meta_ratio: prediction_interval = FALSE suppresses prediction interva
   expect_true(is.null(r$meta$lower.predict) || is.na(r$meta$lower.predict))
 })
 
-test_that("meta_ratio: influence analysis is a metainf object", {
-  expect_s3_class(.fix_ratio_events$influence.analysis, "metainf")
+test_that("meta_ratio: influence outputs include raw and tidy forms", {
+  expect_s3_class(.fix_ratio_events$influence.meta, "metainf")
+  expect_s3_class(.fix_ratio_events$influence.analysis, "data.frame")
 })
 
 test_that("meta_ratio: verbose = TRUE produces startup message", {
   expect_message(
     meta_ratio(
-      dat_bcg,
+      transform(dat_bcg, ncon = cpos + cneg),
       event.e = "tpos", n.e = "npos",
       event.c = "cpos", n.c = "ncon",
       studylab = "author",
@@ -150,7 +169,7 @@ test_that("meta_ratio: verbose = TRUE produces startup message", {
 })
 
 test_that("meta_ratio: warns when pre-computed values contain invalid zeros", {
-  bad <- dat_bcg
+  bad <- bcg_clean
   bad$or_est[1] <- 0
   bad$or_lo[1] <- 0
 
@@ -187,9 +206,24 @@ test_that("meta_ratio: errors when neither raw counts nor effect sizes are suppl
   )
 })
 
+test_that("meta_ratio rejects ambiguous inputs and records continuity settings", {
+  binary <- transform(dat_bcg, ncon = cpos + cneg)
+  both <- transform(binary, est = 1, lo = 0.8, hi = 1.2)
+  expect_error(
+    meta_ratio(both, "tpos", "npos", "cpos", "ncon",
+      effect = "est", lower = "lo", upper = "hi"),
+    "not both"
+  )
+  fit <- suppressWarnings(meta_ratio(binary, "tpos", "npos", "cpos", "ncon",
+    incr = 0.25, method_incr = "all", allstudies = TRUE))
+  expect_equal(fit$settings$continuity_correction, 0.25)
+  expect_equal(fit$settings$method_incr, "all")
+  expect_true(fit$settings$allstudies)
+})
+
 test_that("meta_ratio: auto study labels created when studylab is NULL", {
   r <- meta_ratio(
-    data = dat_bcg,
+    data = transform(dat_bcg, ncon = cpos + cneg),
     event.e = "tpos", n.e = "npos",
     event.c = "cpos", n.c = "ncon"
   )
@@ -199,7 +233,7 @@ test_that("meta_ratio: auto study labels created when studylab is NULL", {
 
 test_that("meta_ratio: ci_method classic is accepted", {
   r <- meta_ratio(
-    data = dat_bcg,
+    data = transform(dat_bcg, ncon = cpos + cneg),
     event.e = "tpos", n.e = "npos",
     event.c = "cpos", n.c = "ncon",
     ci_method = "classic"
@@ -210,7 +244,7 @@ test_that("meta_ratio: ci_method classic is accepted", {
 
 test_that("meta_ratio: tau_method DL is accepted", {
   r <- meta_ratio(
-    dat_bcg,
+    transform(dat_bcg, ncon = cpos + cneg),
     event.e = "tpos", n.e = "npos",
     event.c = "cpos", n.c = "ncon",
     tau_method = "DL"
@@ -257,7 +291,7 @@ test_that("summary.meta_ratio: prediction interval is printed when available", {
 test_that("meta_ratio: errors when studylab column is missing", {
   expect_error(
     meta_ratio(
-      data = dat_bcg,
+      data = transform(dat_bcg, ncon = cpos + cneg),
       event.e = "tpos", n.e = "npos",
       event.c = "cpos", n.c = "ncon",
       studylab = "not_a_column"

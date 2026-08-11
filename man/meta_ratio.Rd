@@ -13,6 +13,8 @@ meta_ratio(
   effect = NULL,
   lower = NULL,
   upper = NULL,
+  se = NULL,
+  effect_scale = c("ratio", "log"),
   ci_level = 0.95,
   studylab = NULL,
   subgroup = NULL,
@@ -21,6 +23,12 @@ meta_ratio(
   tau_method = "REML",
   ci_method = "HK",
   prediction_interval = TRUE,
+  incr = 0.5,
+  method_incr = c("only0", "if0all", "all", "user"),
+  allstudies = FALSE,
+  missing_action = c("exclude", "error"),
+  duplicate_action = c("warn", "error", "make_unique"),
+  singleton_action = c("warn", "retain", "omit", "error"),
   verbose = FALSE
 )
 }
@@ -49,6 +57,14 @@ confidence interval bound of the pre-computed effect estimate.}
 \item{upper}{Character string giving the column name for the upper
 confidence interval bound of the pre-computed effect estimate.}
 
+\item{se}{Optional character string giving the standard-error column for a
+pre-computed log ratio. When supplied, set \code{effect_scale = "log"} and do
+not supply \code{lower} or \code{upper}.}
+
+\item{effect_scale}{Scale of pre-computed \code{effect}, \code{lower}, and \code{upper}:
+\code{"ratio"} (default) for OR/RR/HR values, or \code{"log"} for log OR/log RR/log
+HR values. Standard-error input is supported only on the log scale.}
+
 \item{ci_level}{Numeric scalar giving the confidence level used for
 pre-computed effect sizes, typically \code{0.95}. This is used to
 derive the standard error from \code{lower} and \code{upper}.}
@@ -57,8 +73,10 @@ derive the standard error from \code{lower} and \code{upper}.}
 study labels. If omitted, labels are auto-generated as
 \code{"Study_1"}, \code{"Study_2"}, and so on.}
 
-\item{subgroup}{Optional character string giving the column name for
-a subgroup variable used in subgroup meta-analysis.}
+\item{subgroup}{Optional single character string giving a completely
+observed subgroup column. At least two observed levels are required.
+Singleton levels are retained with a warning. The default \code{NULL} performs
+no subgroup analysis; subgroup analysis must be requested explicitly.}
 
 \item{model}{Character string specifying the meta-analytic model:
 \code{"random"} for random-effects or \code{"fixed"} for
@@ -84,6 +102,23 @@ random-effects confidence intervals. Options are \code{"HK"}
 interval is computed for the pooled random-effects estimate where
 applicable.}
 
+\item{incr}{Continuity correction added to zero cells for raw binary data.}
+
+\item{method_incr}{When to apply \code{incr}: \code{"only0"}, \code{"if0all"}, \code{"all"},
+or \code{"user"}, corresponding to \code{meta::metabin()}'s \code{method.incr}.}
+
+\item{allstudies}{Logical; apply the continuity correction to all studies.}
+
+\item{missing_action}{How incomplete analysis rows are handled: \code{"exclude"}
+records and removes them, while \code{"error"} stops before fitting.}
+
+\item{duplicate_action}{How duplicate study labels are handled: \code{"warn"}
+(default) makes them unique and records the change, \code{"error"} stops, and
+\code{"make_unique"} records the change without warning.}
+
+\item{singleton_action}{Handling of subgroup levels containing one study:
+\code{"warn"}, \code{"retain"}, \code{"omit"}, or \code{"error"}.}
+
 \item{verbose}{Logical; if \code{TRUE}, progress messages are printed
 during model fitting.}
 }
@@ -102,7 +137,7 @@ subgroup analysis was requested
 \description{
 Conducts a meta-analysis of ratio effect measures using either raw
 event-count data or pre-computed study-level effect estimates with
-confidence intervals.
+confidence intervals, or log-ratio estimates with standard errors.
 }
 \details{
 Two input formats are supported:
@@ -111,6 +146,8 @@ Two input formats are supported:
 \code{event.c}, and \code{n.c}
 \item Pre-computed effect sizes using \code{effect}, \code{lower},
 and \code{upper}
+\item Log OR, log RR, or log HR estimates using \code{effect} and
+\code{se}, with \code{effect_scale = "log"}
 }
 
 The function supports odds ratios (OR), risk ratios (RR), and hazard
@@ -119,9 +156,10 @@ cannot be derived from raw event-count data.
 
 If raw event-count data are supplied, the function fits the model
 using \code{meta::metabin()}. If pre-computed effect sizes are
-supplied, the function log-transforms the estimates and derives
-standard errors from the reported confidence intervals before fitting
-the model using \code{meta::metagen()}.
+supplied on the ratio scale, the function log-transforms the estimates and
+derives standard errors from the reported confidence intervals. Log-scale
+confidence limits or a log-scale standard error may instead be supplied
+directly. All pre-computed paths are fitted with \code{meta::metagen()}.
 
 When pre-computed effect sizes are used, studies with non-finite
 log-transformed values are excluded with a warning. This commonly
@@ -133,6 +171,17 @@ differ if zero-cell corrections were applied in the original study
 calculations or if raw event counts are analysed with continuity
 corrections internally by \pkg{meta}.
 }
+\section{CSV and Excel columns}{
+
+Use one row per independent study comparison. For OR or RR from counts,
+provide numeric columns corresponding to \code{event.e}, \code{n.e}, \code{event.c}, and
+\code{n.c}. For a reported OR, RR, or HR, provide \code{effect}, \code{lower}, and \code{upper}
+on the ratio scale. Alternatively provide a log effect and its standard
+error using \code{effect}, \code{se}, and \code{effect_scale = "log"}. Study-label and
+subgroup columns may contain text. Column headers do not need to use these
+exact names because arguments map the user's headers explicitly.
+}
+
 \examples{
 data(dat_bcg, package = "metapropul")
 

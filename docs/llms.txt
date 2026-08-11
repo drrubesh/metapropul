@@ -1,0 +1,325 @@
+# metapropul
+
+`metapropul` is a practical toolkit for meta-analysis in systematic
+reviews. It provides a consistent workflow for ratio measures,
+continuous outcomes, single proportions, subgroup analysis,
+meta-regression, influence diagnostics, publication-bias assessment,
+risk-of-bias figures, and non-pooling umbrella reviews.
+
+## Installation
+
+Install the development version from GitHub:
+
+``` r
+
+# install.packages("pak")
+pak::pak("drrubesh/metapropul")
+```
+
+## Graphical interface
+
+Users who prefer a point-and-click workflow can launch the optional
+Shiny interface. It supports CSV and Excel upload, bundled examples, all
+six core analysis families, subgroup analysis, model controls, forest
+plots, tables, diagnostics, downloads, and an equivalent reproducible R
+call. A guided, numbered workflow includes controls to start over or
+safely close the local application. Every analytical figure can be
+downloaded as PDF, PNG, SVG, or TIFF, and every result table as Word,
+CSV, or PDF. Publication-bias assessment can display one selected method
+or all four methods in a 2-by-2 panel.
+
+The Risk of bias workspace can also combine the current meta-analysis
+with an uploaded ROB assessment in one aligned forest-and-traffic-light
+figure. Study labels are checked before plotting to prevent judgements
+being assigned to the wrong estimates.
+
+See [Preparing CSV and Excel
+data](https://drrubesh.github.io/metapropul/articles/input-data-formats.md)
+for the required columns and scales for every analysis family. The GUI
+displays the same context-sensitive guidance and provides a CSV template
+for the selected input format.
+
+``` r
+
+install.packages(c("shiny", "bslib", "readxl")) # once, if needed
+metapropul::metapropul_app()
+```
+
+Plot titles remain blank unless the user enters one.
+
+## Quick example
+
+``` r
+
+library(metapropul)
+data("dat_bcg", package = "metapropul")
+
+dat_bcg$ncon <- dat_bcg$cpos + dat_bcg$cneg
+
+fit <- meta_ratio(
+  dat_bcg,
+  event.e = "tpos", n.e = "npos",
+  event.c = "cpos", n.c = "ncon",
+  studylab = "author", subgroup = "alloc",
+  measure = "OR", model = "random"
+)
+#> Warning: Duplicate study label(s) were made unique: Rosenthal et al, Comstock
+#> et al. See 'label_audit' in the result.
+
+summary(fit)
+#>
+#> Meta-analysis Summary
+#> ----------------------
+#> Number of studies: 13
+#> Total observations: 357,347 (191,064 experimental, 166,283 control)
+#> Total events: 2,575
+#>
+#> Pooled OR = 0.47 (95% CI: 0.32, 0.71)
+#> Prediction interval: 0.13 – 1.79
+#> p-value = 0.002
+#> Q = 163.16 (df = 12), p < 0.001
+#> I² = 92.6%
+#> Tau² = 0.3378
+#>
+#> Subgroup results
+#> ----------------
+#> random: 0.37 (95% CI: 0.20, 0.70), Tau² = 0.4131, I² = 94.6%
+#> alternate: 0.54 (95% CI: 0.01, 58.20), Tau² = 0.2421, I² = 88.7%
+#> systematic: 0.65 (95% CI: 0.20, 2.12), Tau² = 0.4200, I² = 82.3%
+#>
+#> Test for subgroup differences (random): Q = 1.76, df = 2, p = 0.414
+#>
+#> Notes
+#> -----
+#>   - Pooled OR < 1 indicates lower odds in the experimental group.
+#>   - I² quantifies the proportion of total observed variability attributable
+#>   to between-study heterogeneity rather than sampling error.
+#>   - However, I² increases with study precision and may approach 100% even
+#>   when Tau² remains unchanged.
+#>   - Therefore, I² should not be used alone to judge heterogeneity or decide
+#>   whether studies should be pooled.
+#>   - Tau² represents the variance of true effects across studies and is
+#>   generally more informative than I² for judging the magnitude of
+#>   heterogeneity.
+#>   - High I² observed. Interpret cautiously because I² may be inflated in
+#>   large or highly precise studies.
+#>   - The prediction interval shows the range of effects expected in a new
+#>   study and helps assess clinical relevance.
+#>   - Confidence interval method for random-effects model: HK.
+#>   - The subgroup-difference test assesses whether pooled effects differ
+#>   between subgroup levels; a non-significant result does not prove the
+#>   subgroups are equivalent.
+#>   - Subgroup-specific prediction intervals are not shown in this summary.
+#>   - Decisions to pool studies should be based on clinical relevance, not
+#>   solely on statistical heterogeneity.
+#>
+#> For study-level results: object$table
+```
+
+Create publication-oriented outputs with the same fitted object:
+
+``` r
+
+forest_meta(fit)
+table_meta(fit)
+plot_baujat(fit)
+publication_bias(fit, plot_method = "original")
+```
+
+## Analysis families
+
+- [`meta_ratio()`](https://drrubesh.github.io/metapropul/reference/meta_ratio.md)
+  analyses odds ratios, risk ratios, and pre-computed hazard ratios.
+- [`meta_mean()`](https://drrubesh.github.io/metapropul/reference/meta_mean.md)
+  analyses mean differences and standardised mean differences.
+- [`meta_prop()`](https://drrubesh.github.io/metapropul/reference/meta_prop.md)
+  analyses single proportions using logit or Freeman–Tukey
+  transformations.
+- [`meta_generic()`](https://drrubesh.github.io/metapropul/reference/meta_generic.md)
+  pools estimates supplied with standard errors, variances, or
+  confidence intervals.
+- [`meta_cor()`](https://drrubesh.github.io/metapropul/reference/meta_cor.md)
+  pools correlations using Fisher’s z transformation.
+- [`meta_rate()`](https://drrubesh.github.io/metapropul/reference/meta_rate.md)
+  pools incidence rates from events and person-time.
+- [`meta_reg()`](https://drrubesh.github.io/metapropul/reference/meta_reg.md)
+  supports continuous and categorical moderators, interactions,
+  Knapp–Hartung inference, predictions, and diagnostics.
+- [`umbrella_review()`](https://drrubesh.github.io/metapropul/reference/umbrella_review.md)
+  organises reported review-level results without calculating a new
+  pooled estimate across meta-analyses.
+
+See the [getting-started
+article](https://drrubesh.github.io/metapropul/articles/metapropul-intro.html)
+and [function
+reference](https://drrubesh.github.io/metapropul/reference/index.html).
+
+# Package index
+
+## Graphical interface
+
+Launch the optional point-and-click meta-analysis workspace.
+
+- [`metapropul_app()`](https://drrubesh.github.io/metapropul/reference/metapropul_app.md)
+  : Launch the metapropul graphical interface
+
+## Core meta-analysis models
+
+Fit binary, continuous, and single-proportion meta-analyses.
+
+- [`meta_ratio()`](https://drrubesh.github.io/metapropul/reference/meta_ratio.md)
+  : Meta-analysis of ratio measures
+- [`meta_mean()`](https://drrubesh.github.io/metapropul/reference/meta_mean.md)
+  : Meta-analysis of means (MD or SMD)
+- [`meta_prop()`](https://drrubesh.github.io/metapropul/reference/meta_prop.md)
+  : Meta-analysis of proportions
+- [`meta_generic()`](https://drrubesh.github.io/metapropul/reference/meta_generic.md)
+  : Generic inverse-variance meta-analysis
+- [`meta_cor()`](https://drrubesh.github.io/metapropul/reference/meta_cor.md)
+  : Meta-analysis of correlations
+- [`meta_rate()`](https://drrubesh.github.io/metapropul/reference/meta_rate.md)
+  : Meta-analysis of incidence rates
+
+## Forest plots and diagnostics
+
+Inspect primary, cumulative, influence, and heterogeneity results.
+
+- [`forest_meta()`](https://drrubesh.github.io/metapropul/reference/forest_meta.md)
+  : Forest plot for meta-analysis results
+- [`forest_rob()`](https://drrubesh.github.io/metapropul/reference/forest_rob.md)
+  : Combined forest plot and risk-of-bias traffic lights
+- [`forest_influence()`](https://drrubesh.github.io/metapropul/reference/forest_influence.md)
+  : Influence forest plot
+- [`forest_cumulative()`](https://drrubesh.github.io/metapropul/reference/forest_cumulative.md)
+  : Cumulative forest plot
+- [`plot_heterogeneity()`](https://drrubesh.github.io/metapropul/reference/plot_heterogeneity.md)
+  : Leave-one-out heterogeneity plot
+- [`plot_baujat()`](https://drrubesh.github.io/metapropul/reference/plot_baujat.md)
+  : Baujat plot
+
+## Publication bias
+
+Assess funnel asymmetry and small-study effects.
+
+- [`publication_bias()`](https://drrubesh.github.io/metapropul/reference/publication_bias.md)
+  : Publication bias assessment
+- [`table_publication_bias()`](https://drrubesh.github.io/metapropul/reference/table_publication_bias.md)
+  : Tabulate publication-bias method availability
+- [`doi_plot()`](https://drrubesh.github.io/metapropul/reference/doi_plot.md)
+  : DOI plot for publication bias (small meta-analyses)
+
+## Meta-regression
+
+Fit, predict, diagnose, tabulate, and plot moderator models.
+
+- [`meta_reg()`](https://drrubesh.github.io/metapropul/reference/meta_reg.md)
+  : Meta-regression
+- [`predict_meta_reg()`](https://drrubesh.github.io/metapropul/reference/predict_meta_reg.md)
+  : Predict from a meta-regression model
+- [`diagnose_meta_reg()`](https://drrubesh.github.io/metapropul/reference/diagnose_meta_reg.md)
+  : Diagnose a meta-regression model
+- [`table_meta_reg()`](https://drrubesh.github.io/metapropul/reference/table_meta_reg.md)
+  : Tabulate meta-regression results
+- [`plot_meta_reg()`](https://drrubesh.github.io/metapropul/reference/plot_meta_reg.md)
+  : Plot meta-regression results and diagnostics
+- [`bubble_plot()`](https://drrubesh.github.io/metapropul/reference/bubble_plot.md)
+  : Bubble plot for meta-regression
+
+## Results tables
+
+Create publication-ready meta-analysis tables.
+
+- [`table_meta()`](https://drrubesh.github.io/metapropul/reference/table_meta.md)
+  : Summary table for meta-analysis results
+- [`table_influence()`](https://drrubesh.github.io/metapropul/reference/table_influence.md)
+  : Leave-one-out influence table
+- [`table_cumulative_meta()`](https://drrubesh.github.io/metapropul/reference/table_cumulative_meta.md)
+  : Cumulative meta-analysis table
+- [`table_subgroups()`](https://drrubesh.github.io/metapropul/reference/table_subgroups.md)
+  : Tabulate subgroup meta-analysis results
+
+## Risk-of-bias plots
+
+Create traffic-light and summary appraisal figures.
+
+- [`plot_rob()`](https://drrubesh.github.io/metapropul/reference/plot_rob.md)
+  : Traffic-light plot for risk of bias or study appraisal
+- [`plot_rob_summary()`](https://drrubesh.github.io/metapropul/reference/plot_rob_summary.md)
+  : Summary plot for risk of bias or study appraisal
+- [`validate_rob()`](https://drrubesh.github.io/metapropul/reference/validate_rob.md)
+  : Validate risk-of-bias data
+
+## Umbrella reviews
+
+Preserve reported review estimates and assess credibility, quality, and
+overlap without pooling reviews.
+
+- [`umbrella_review()`](https://drrubesh.github.io/metapropul/reference/umbrella_review.md)
+  : Construct an umbrella-review evidence object
+- [`classify_umbrella()`](https://drrubesh.github.io/metapropul/reference/classify_umbrella.md)
+  : Classify statistical credibility in an umbrella review
+- [`grade_umbrella()`](https://drrubesh.github.io/metapropul/reference/grade_umbrella.md)
+  : Record structured GRADE judgements
+- [`assess_review_quality()`](https://drrubesh.github.io/metapropul/reference/assess_review_quality.md)
+  : Store AMSTAR 2 or ROBIS review-quality assessments
+- [`diagnose_umbrella_primary()`](https://drrubesh.github.io/metapropul/reference/diagnose_umbrella_primary.md)
+  : Diagnose primary-study evidence within each source meta-analysis
+- [`study_overlap()`](https://drrubesh.github.io/metapropul/reference/study_overlap.md)
+  : Quantify primary-study overlap across reviews
+- [`sensitivity_umbrella_overlap()`](https://drrubesh.github.io/metapropul/reference/sensitivity_umbrella_overlap.md)
+  : Compare prespecified review-selection strategies
+- [`table_umbrella()`](https://drrubesh.github.io/metapropul/reference/table_umbrella.md)
+  : Create a review-by-review umbrella table
+- [`plot_umbrella()`](https://drrubesh.github.io/metapropul/reference/plot_umbrella.md)
+  : Plot reported meta-analysis results in an umbrella review
+- [`plot_study_overlap()`](https://drrubesh.github.io/metapropul/reference/plot_study_overlap.md)
+  : Plot citation matrices, pairwise overlap, or CCA
+
+## Example datasets
+
+Bundled datasets for examples, teaching, and manual validation.
+
+- [`dat_bcg`](https://drrubesh.github.io/metapropul/reference/dat_bcg.md)
+  : Example Dataset: dat_bcg
+- [`dat_normand1999`](https://drrubesh.github.io/metapropul/reference/dat_normand1999.md)
+  : Normand 1999 Meta-analysis Dataset (Continuous Outcomes)
+- [`Fleiss1993bin`](https://drrubesh.github.io/metapropul/reference/Fleiss1993bin.md)
+  : Fleiss1993bin: Aspirin After Myocardial Infarction Dataset (Binary
+  Outcomes)
+- [`Olkin95`](https://drrubesh.github.io/metapropul/reference/Olkin95.md)
+  : Example dataset: Olkin95
+- [`caffeine`](https://drrubesh.github.io/metapropul/reference/caffeine.md)
+  : Caffeine and Endurance Performance Dataset
+- [`cisapride`](https://drrubesh.github.io/metapropul/reference/cisapride.md)
+  : Cisapride and Reflux Esophagitis Dataset
+- [`lungcancer`](https://drrubesh.github.io/metapropul/reference/lungcancer.md)
+  : Lung Cancer and Smoking Cohort Study Dataset
+- [`amlodipine`](https://drrubesh.github.io/metapropul/reference/amlodipine.md)
+  : Amlodipine Clinical Trial Dataset
+- [`Pagliaro1992`](https://drrubesh.github.io/metapropul/reference/Pagliaro1992.md)
+  : Portal Vein Thrombosis After Splenectomy Dataset
+
+# Articles
+
+### Get started
+
+- [Getting started with
+  metapropul](https://drrubesh.github.io/metapropul/articles/metapropul-intro.md):
+- [Preparing CSV and Excel
+  data](https://drrubesh.github.io/metapropul/articles/input-data-formats.md):
+
+### Case studies
+
+- [Case study: BCG vaccine
+  effectiveness](https://drrubesh.github.io/metapropul/articles/case-ratio-bcg.md):
+- [Case study: Tuberculosis proportions and
+  meta-regression](https://drrubesh.github.io/metapropul/articles/case-proportion-regression.md):
+- [Case study: Continuous outcomes and study
+  appraisal](https://drrubesh.github.io/metapropul/articles/case-mean-appraisal.md):
+- [Case study: generic effects, correlations, and incidence
+  rates](https://drrubesh.github.io/metapropul/articles/case-additional-models.md):
+
+### Specialist workflow
+
+- [Umbrella reviews without pooling
+  meta-analyses](https://drrubesh.github.io/metapropul/articles/umbrella-reviews.md):

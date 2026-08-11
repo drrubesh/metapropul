@@ -1,0 +1,128 @@
+---
+title: "Case study: Continuous outcomes and study appraisal"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Case study: Continuous outcomes and study appraisal}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 9,
+  fig.height = 6, message = FALSE, warning = FALSE)
+render_gt <- function(expr) {
+  invisible(utils::capture.output(table <- force(expr)))
+  cat(gt::as_raw_html(table))
+}
+```
+
+This case study demonstrates continuous-outcome meta-analysis and then uses a
+second bundled dataset to show risk-of-bias visualisation.
+
+```{r}
+library(metapropul)
+data("dat_normand1999", package = "metapropul")
+dat_normand1999$period <- ifelse(
+  seq_len(nrow(dat_normand1999)) <= 4, "Earlier", "Later"
+)
+```
+
+## Mean difference and subgroup analysis
+
+```{r}
+mean_md <- meta_mean(
+  dat_normand1999,
+  mean.e = "m1i", sd.e = "sd1i", n.e = "n1i",
+  mean.c = "m2i", sd.c = "sd2i", n.c = "n2i",
+  studylab = "source", subgroup = "period",
+  measure = "MD", model = "random", ci_method = "HK"
+)
+summary(mean_md)
+mean_md$meta.subgroup.summary
+```
+
+A fixed-effect standardised mean difference provides a sensitivity analysis
+on a common scale.
+
+```{r}
+mean_smd <- meta_mean(
+  dat_normand1999, "m1i", "sd1i", "n1i", "m2i", "sd2i", "n2i",
+  studylab = "source", subgroup = "period",
+  measure = "SMD", model = "fixed"
+)
+summary(mean_smd)
+```
+
+```{r mean-table, results='asis'}
+render_gt(table_meta(mean_md, title = "Continuous-outcome meta-analysis"))
+```
+
+```{r mean-forest, fig.height=7}
+forest_meta(mean_md)
+```
+
+## Influence and cumulative analyses
+
+```{r mean-influence-table, results='asis'}
+render_gt(table_influence(mean_md))
+```
+
+```{r mean-influence-forest}
+forest_influence(mean_md)
+```
+
+```{r mean-cumulative-table, results='asis'}
+render_gt(table_cumulative_meta(mean_md))
+```
+
+```{r mean-cumulative-forest}
+forest_cumulative(mean_md)
+```
+
+## Heterogeneity and DOI assessment
+
+```{r mean-heterogeneity}
+plot_heterogeneity(mean_md)
+```
+
+```{r mean-baujat}
+plot_baujat(mean_md)
+```
+
+There are fewer than ten studies, so this example uses the DOI plot rather
+than treating funnel-asymmetry tests as reliable.
+
+```{r doi}
+doi_plot(mean_md)
+```
+
+## Risk-of-bias figures
+
+The bundled caffeine dataset contains five domain judgements and an overall
+judgement. The labels are passed as a custom appraisal scheme so the example
+uses exactly the levels present in the source data.
+
+```{r}
+data("caffeine", package = "metapropul")
+domains <- c("D1", "D2", "D3", "D4", "D5", "rob")
+judgements <- unique(unlist(caffeine[domains], use.names = FALSE))
+judgements <- judgements[!is.na(judgements)]
+```
+
+```{r rob-traffic, fig.width=10, fig.height=6}
+plot_rob(
+  caffeine, "study", tool = "Custom",
+  domains = domains, levels = judgements
+)
+```
+
+```{r rob-summary}
+plot_rob_summary(
+  caffeine, "study", tool = "Custom",
+  domains = domains, levels = judgements
+)
+```
+
+Risk-of-bias judgements should inform interpretation and sensitivity analysis;
+they are not statistical weights and should not be converted mechanically into
+quality scores.

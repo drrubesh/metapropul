@@ -1,0 +1,76 @@
+test_that("GUI launcher is exported and bundled", {
+  expect_true(is.function(metapropul_app))
+
+  app <- system.file("shiny", "metapropul", "app.R", package = "metapropul")
+  if (!nzchar(app)) {
+    app <- testthat::test_path("..", "..", "inst", "shiny", "metapropul", "app.R")
+  }
+  expect_true(file.exists(app))
+  expect_true(file.exists(file.path(dirname(app), "www", "metapropul.css")))
+})
+
+test_that("GUI launcher reports missing optional dependencies clearly", {
+  launcher_body <- paste(deparse(body(metapropul_app)), collapse = "\n")
+  expect_match(launcher_body, "requireNamespace")
+  expect_match(launcher_body, "shiny::runApp")
+})
+
+test_that("GUI includes guided workflow and safe application controls", {
+  app_file <- system.file("shiny", "metapropul", "app.R", package = "metapropul")
+  if (!nzchar(app_file)) {
+    app_file <- testthat::test_path("..", "..", "inst", "shiny", "metapropul", "app.R")
+  }
+  app_code <- paste(readLines(app_file, warn = FALSE), collapse = "\n")
+
+  expect_match(app_code, 'id = "workflow_tabs"', fixed = TRUE)
+  expect_match(app_code, 'actionButton("start_over"', fixed = TRUE)
+  expect_match(app_code, 'actionButton("close_app"', fixed = TRUE)
+  expect_match(app_code, "shiny::stopApp", fixed = TRUE)
+  expect_match(app_code, 'nav_select("workflow_tabs", "2 Results"', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("forest_influence")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("forest_cumulative")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("publication_bias")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("meta_reg")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("plot_rob")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("forest_rob")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("umbrella_review")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("study_overlap")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("predict_meta_reg")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("doi_plot")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("grade_umbrella")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("assess_review_quality")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("diagnose_umbrella_primary")', fixed = TRUE)
+  expect_match(app_code, 'mp_fun("sensitivity_umbrella_overlap")', fixed = TRUE)
+  expect_false(grepl('nav_menu("Results"', app_code, fixed = TRUE))
+  expect_match(app_code, 'class = "btn-danger mp-close-floating"', fixed = TRUE)
+  expect_match(app_code, '"SVG" = "svg"', fixed = TRUE)
+  expect_match(app_code, '"Word document" = "docx"', fixed = TRUE)
+  expect_match(app_code, 'readxl::read_excel', fixed = TRUE)
+  expect_match(app_code, '".xlsx"', fixed = TRUE)
+  expect_match(app_code, '"Log ratio and SE"', fixed = TRUE)
+  expect_match(app_code, 'output$input_guide', fixed = TRUE)
+  expect_match(app_code, 'download_input_template', fixed = TRUE)
+  expect_match(app_code, 'download_reg_prediction_template', fixed = TRUE)
+  expect_match(app_code, 'download_rob_template', fixed = TRUE)
+  expect_match(app_code, 'download_umbrella_template', fixed = TRUE)
+  expect_match(app_code, 'download_overlap_template', fixed = TRUE)
+  expect_match(app_code, 'download_primary_template', fixed = TRUE)
+  expect_match(app_code, 'one row per review–primary-study membership', fixed = TRUE)
+  expect_match(app_code, 'reviews are not pooled together', fixed = TRUE)
+  expect_match(app_code, '"Subgroup (optional; default: None)"', fixed = TRUE)
+  expect_match(app_code, 'columns, selected = NULL, optional = TRUE', fixed = TRUE)
+  expect_match(app_code, 'radioButtons("bias_display"', fixed = TRUE)
+  expect_match(app_code, 'c("original", "contour", "trimfill", "limitmeta")', fixed = TRUE)
+  expect_match(app_code, 'register_plot_download("cumulative"', fixed = TRUE)
+  expect_match(app_code, 'register_plot_download("bias_plot"', fixed = TRUE)
+  expect_match(app_code, 'register_plot_download("forest_rob"', fixed = TRUE)
+  expect_match(app_code, 'register_plot_download("overlap_plot"', fixed = TRUE)
+  expect_match(app_code, 'register_table_download("cumulative_table"', fixed = TRUE)
+  expect_match(app_code, 'register_table_download("bias_table"', fixed = TRUE)
+  expect_match(app_code, 'register_table_download("primary_table"', fixed = TRUE)
+})
+
+test_that("Viewer is the default launch surface when available", {
+  expect_identical(formals(metapropul_app)$launch.browser,
+    quote(getOption("viewer", TRUE)))
+})

@@ -116,7 +116,7 @@
     tau2_val <- s$Tau2
 
     cat(sprintf(
-      "Overall pooled proportion = %.1f%% (95%% CI: %.1f%%, %.1f%%)\n",
+      "Pooled proportion = %.1f%% (95%% CI: %.1f%%, %.1f%%)\n",
       s$Estimate, s$lower, s$upper
     ))
 
@@ -131,7 +131,21 @@
     df_val <- meta_result$df.Q
     pQ_val <- meta_result$pval.Q
 
-    if (!is.null(Q_val) && !is.na(Q_val)) {
+    # GLMM proportion models can provide both Wald and likelihood-ratio
+    # heterogeneity tests. Report the LRT when available; otherwise use the
+    # first finite test consistently across Q, df, and p-value.
+    if (length(Q_val) > 1L) {
+      q_index <- if (!is.null(names(Q_val)) && "LRT" %in% names(Q_val)) {
+        match("LRT", names(Q_val))
+      } else {
+        which(is.finite(Q_val))[1L]
+      }
+      Q_val <- Q_val[q_index]
+      if (length(df_val) >= q_index) df_val <- df_val[q_index]
+      if (length(pQ_val) >= q_index) pQ_val <- pQ_val[q_index]
+    }
+
+    if (length(Q_val) == 1L && is.finite(Q_val)) {
       cat(sprintf(
         "Q = %.2f (df = %d), p %s\n",
         Q_val, df_val, .fmt_pval(pQ_val)
@@ -170,7 +184,7 @@
     }
 
     cat(sprintf(
-      "Overall pooled %s = %.2f (95%% CI: %.2f, %.2f)\n",
+      "Pooled %s = %.2f (95%% CI: %.2f, %.2f)\n",
       measure, est, lci, uci
     ))
 
@@ -181,7 +195,7 @@
       ))
     }
 
-    cat(sprintf("p-value = %s\n", .fmt_pval(pval)))
+    cat(sprintf("p-value %s\n", .fmt_pval(pval)))
 
     Q_val <- meta_result$Q
     df_val <- meta_result$df.Q
@@ -279,7 +293,7 @@
   }
 
   .cat_note(
-    "- I\u00b2 quantifies the proportion of total variability ",
+    "- I\u00b2 quantifies the proportion of total observed variability ",
     "attributable to between-study heterogeneity rather than ",
     "sampling error."
   )
@@ -447,7 +461,8 @@ summary.meta_reg <- function(object, ...) {
                        identical(object$sm, "PLOGIT")) {
       paste(
         "- Model-scale estimates are on the logit scale.",
-        "Moderator effects are back-transformed to percentages."
+        "Exponentiated moderator coefficients are odds ratios; use",
+        "predict_meta_reg() for predicted proportions."
       )
     } else {
       paste(

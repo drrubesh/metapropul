@@ -6,6 +6,8 @@ test_that("meta_mean: raw group data path returns correct class and structure", 
     r,
     c(
       "meta", "table", "meta.subgroup.summary", "influence.analysis",
+      "influence.meta", "subgroup_test", "analysis_data", "excluded_data",
+      "exclusion_log", "label_audit", "settings",
       "model", "measure", "tau_method", "ci_method", "subgroup"
     )
   )
@@ -80,14 +82,24 @@ test_that("meta_mean: prediction_interval = FALSE suppresses prediction interval
   expect_true(is.null(r$meta$lower.predict) || is.na(r$meta$lower.predict))
 })
 
-test_that("meta_mean: influence analysis is a metainf object", {
-  expect_s3_class(.fix_mean$influence.analysis, "metainf")
+test_that("meta_mean: influence outputs include raw and tidy forms", {
+  expect_s3_class(.fix_mean$influence.meta, "metainf")
+  expect_s3_class(.fix_mean$influence.analysis, "data.frame")
 })
 
 test_that("meta_mean: errors when no input path is given", {
   expect_error(
     meta_mean(data = dat_normand1999, studylab = "source"),
     "raw group data"
+  )
+})
+
+test_that("meta_mean rejects ambiguous raw and pre-computed inputs", {
+  both <- transform(dat_normand1999, est = 0, lo = -1, hi = 1)
+  expect_error(
+    meta_mean(both, "m1i", "sd1i", "n1i", "m2i", "sd2i", "n2i",
+      effect = "est", lower = "lo", upper = "hi"),
+    "not both"
   )
 })
 

@@ -1,0 +1,126 @@
+url: https://drrubesh.github.io/metapropul/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  logo: metapropul_hex.png
+
+home:
+  title: metapropul
+  description: Practical meta-analysis, meta-regression, and umbrella-review reporting
+  links:
+    - text: Function overview
+      href: reference/index.html
+    - text: Getting started
+      href: articles/metapropul-intro.html
+    - text: Case studies
+      href: articles/case-ratio-bcg.html
+    - text: Umbrella reviews
+      href: articles/umbrella-reviews.html
+
+navbar:
+  structure:
+    left: [home, reference, articles, news]
+    right: [github]
+
+articles:
+  - title: Get started
+    navbar: Get started
+    contents:
+      - metapropul-intro
+      - input-data-formats
+  - title: Case studies
+    navbar: Case studies
+    contents:
+      - case-ratio-bcg
+      - case-proportion-regression
+      - case-mean-appraisal
+      - case-additional-models
+  - title: Specialist workflow
+    contents:
+      - umbrella-reviews
+
+reference:
+  - title: Graphical interface
+    desc: Launch the optional point-and-click meta-analysis workspace.
+    contents:
+      - metapropul_app
+
+  - title: Core meta-analysis models
+    desc: Fit binary, continuous, and single-proportion meta-analyses.
+    contents:
+      - meta_ratio
+      - meta_mean
+      - meta_prop
+      - meta_generic
+      - meta_cor
+      - meta_rate
+
+  - title: Forest plots and diagnostics
+    desc: Inspect primary, cumulative, influence, and heterogeneity results.
+    contents:
+      - forest_meta
+      - forest_rob
+      - forest_influence
+      - forest_cumulative
+      - plot_heterogeneity
+      - plot_baujat
+
+  - title: Publication bias
+    desc: Assess funnel asymmetry and small-study effects.
+    contents:
+      - publication_bias
+      - table_publication_bias
+      - doi_plot
+
+  - title: Meta-regression
+    desc: Fit, predict, diagnose, tabulate, and plot moderator models.
+    contents:
+      - meta_reg
+      - predict_meta_reg
+      - diagnose_meta_reg
+      - table_meta_reg
+      - plot_meta_reg
+      - bubble_plot
+
+  - title: Results tables
+    desc: Create publication-ready meta-analysis tables.
+    contents:
+      - table_meta
+      - table_influence
+      - table_cumulative_meta
+      - table_subgroups
+
+  - title: Risk-of-bias plots
+    desc: Create traffic-light and summary appraisal figures.
+    contents:
+      - plot_rob
+      - plot_rob_summary
+      - validate_rob
+
+  - title: Umbrella reviews
+    desc: Preserve reported review estimates and assess credibility, quality, and overlap without pooling reviews.
+    contents:
+      - umbrella_review
+      - classify_umbrella
+      - grade_umbrella
+      - assess_review_quality
+      - diagnose_umbrella_primary
+      - study_overlap
+      - sensitivity_umbrella_overlap
+      - table_umbrella
+      - plot_umbrella
+      - plot_study_overlap
+
+  - title: Example datasets
+    desc: Bundled datasets for examples, teaching, and manual validation.
+    contents:
+      - dat_bcg
+      - dat_normand1999
+      - Fleiss1993bin
+      - Olkin95
+      - caffeine
+      - cisapride
+      - lungcancer
+      - amlodipine
+      - Pagliaro1992

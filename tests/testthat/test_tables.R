@@ -31,17 +31,14 @@ test_that("table_meta: custom title applied (prop)", {
   expect_match(as.character(hdr$title), "Proportion Table")
 })
 
-test_that("table_meta: auto-title contains measure and k (ratio)", {
+test_that("table_meta: has no default title (ratio)", {
   gt <- table_meta(.fix_ratio_events)
-  hdr <- gt$`_heading`
-  expect_match(as.character(hdr$title), "Odds Ratio")
-  expect_match(as.character(hdr$title), "13")
+  expect_null(gt$`_heading`$title)
 })
 
-test_that("table_meta: auto-title contains Proportion and k (prop)", {
+test_that("table_meta: has no default title (prop)", {
   gt <- table_meta(.fix_prop)
-  hdr <- gt$`_heading`
-  expect_match(as.character(hdr$title), "Proportion")
+  expect_null(gt$`_heading`$title)
 })
 
 test_that("table_meta: I2 footnote present", {
@@ -56,6 +53,7 @@ test_that("table_meta: error for wrong class", {
 })
 
 test_that("table_meta: saves to pdf", {
+  skip_if_no_chrome()
   tmp <- tempfile(fileext = ".pdf")
   expect_message(
     table_meta(.fix_prop, save_as = "pdf", filename = tmp),
@@ -76,6 +74,7 @@ test_that("table_meta: saves to docx", {
 })
 
 test_that("table_meta: auto filename created when NULL", {
+  skip_if_no_chrome()
   expect_message(
     table_meta(.fix_prop, save_as = "pdf"),
     "saved to"
@@ -105,10 +104,9 @@ test_that("table_influence: custom title applied", {
   expect_match(as.character(hdr$title), "LOO Analysis")
 })
 
-test_that("table_influence: auto-title contains k", {
+test_that("table_influence: has no default title", {
   gt <- table_influence(.fix_prop)
-  hdr <- gt$`_heading`
-  expect_match(as.character(hdr$title), "13")
+  expect_null(gt$`_heading`$title)
 })
 
 test_that("table_influence: heterogeneity columns present by default", {
@@ -132,10 +130,11 @@ test_that("table_influence: I2 footnote present", {
 })
 
 test_that("table_influence: error for wrong class", {
-  expect_error(table_influence(list()), "Only supports")
+  expect_error(table_influence(list()), "must be of class")
 })
 
 test_that("table_influence: saves to pdf", {
+  skip_if_no_chrome()
   tmp <- tempfile(fileext = ".pdf")
   expect_message(
     table_influence(.fix_prop, save_as = "pdf", filename = tmp),
@@ -191,10 +190,26 @@ test_that("table_cumulative_meta: error for wrong class", {
 })
 
 test_that("table_cumulative_meta: saves to pdf", {
+  skip_if_no_chrome()
   tmp <- tempfile(fileext = ".pdf")
   expect_message(
     table_cumulative_meta(.fix_prop, save_as = "pdf", filename = tmp),
     "saved to"
   )
   unlink(tmp)
+})
+test_that("table_subgroups returns data and gt outputs", {
+  value <- table_subgroups(.fix_prop_subgroup, output = "data")
+  expect_true(is.list(value))
+  expect_true(is.data.frame(value$estimates))
+  expect_s3_class(table_subgroups(.fix_prop_subgroup), "gt_tbl")
+})
+test_that("table titles are opt-in", {
+  untitled <- table_meta(.fix_prop)
+  titled <- table_meta(.fix_prop, title = "Requested title")
+  expect_null(untitled$`_heading`$title)
+  expect_equal(titled$`_heading`$title, "Requested title")
+
+  expect_null(table_influence(.fix_prop)$`_heading`$title)
+  expect_null(table_cumulative_meta(.fix_prop)$`_heading`$title)
 })

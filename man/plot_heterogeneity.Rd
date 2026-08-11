@@ -21,9 +21,8 @@ object.}
 
 \item{stat}{\code{"I2"} (default) or \code{"tau2"}.}
 
-\item{title}{Optional character string for the plot title. If \code{NULL}
-(default), an informative auto-title is used. Set to \code{""} to
-suppress the title.}
+\item{title}{Optional character string for the plot title. No title is
+drawn when \code{NULL} (the default).}
 
 \item{save_as}{One of \code{"viewer"} (default), \code{"pdf"},
 \code{"png"}, or \code{"tiff"}.}

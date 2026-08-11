@@ -2,7 +2,7 @@
 output: github_document
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- README.md is generated from README.Rmd. Please edit that file. -->
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -16,38 +16,97 @@ knitr::opts_chunk$set(
 # metapropul
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/drrubesh/metapropul/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/drrubesh/metapropul/actions/workflows/R-CMD-check.yaml)
+[![pkgdown](https://github.com/drrubesh/metapropul/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/drrubesh/metapropul/actions/workflows/pkgdown.yaml)
 <!-- badges: end -->
 
-The goal of metapropul is to ...
+`metapropul` is a practical toolkit for meta-analysis in systematic reviews.
+It provides a consistent workflow for ratio measures, continuous outcomes,
+single proportions, subgroup analysis, meta-regression, influence diagnostics,
+publication-bias assessment, risk-of-bias figures, and non-pooling umbrella
+reviews.
 
 ## Installation
 
-You can install the development version of metapropul like so:
+Install the development version from GitHub:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+# install.packages("pak")
+pak::pak("drrubesh/metapropul")
 ```
 
-## Example
+## Graphical interface
 
-This is a basic example which shows you how to solve a common problem:
+Users who prefer a point-and-click workflow can launch the optional Shiny
+interface. It supports CSV and Excel upload, bundled examples, all six core analysis
+families, subgroup analysis, model controls, forest plots, tables, diagnostics,
+downloads, and an equivalent reproducible R call. A guided, numbered workflow
+keeps every stage visible in sequence and includes controls to start over or
+close the local application. Every analytical figure can be downloaded as PDF,
+PNG, SVG, or TIFF, and every result table as Word, CSV, or PDF.
+Publication-bias assessment can display one selected method or all four methods
+in a 2-by-2 panel.
 
-```{r example}
-## basic example code
+The Risk of bias workspace can also combine the current meta-analysis with an
+uploaded ROB assessment in one aligned forest-and-traffic-light figure. Study
+labels are checked before plotting to prevent judgements being assigned to the
+wrong estimates.
+
+See [Preparing CSV and Excel data](articles/input-data-formats.html) for the
+required columns and scales for every analysis family. The GUI displays the
+same context-sensitive guidance and provides a CSV template for the selected
+input format. Subgroup analysis is never preselected: the GUI starts at
+**None**, even when a bundled or uploaded dataset contains a subgroup column.
+
+``` r
+install.packages(c("shiny", "bslib", "readxl")) # once, if needed
+metapropul::metapropul_app()
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+Plot titles remain blank unless the user enters one.
 
-```{r cars}
-summary(cars)
+## Quick example
+
+```{r example, message=FALSE}
+library(metapropul)
+data("dat_bcg", package = "metapropul")
+
+dat_bcg$ncon <- dat_bcg$cpos + dat_bcg$cneg
+
+fit <- meta_ratio(
+  dat_bcg,
+  event.e = "tpos", n.e = "npos",
+  event.c = "cpos", n.c = "ncon",
+  studylab = "author", subgroup = "alloc",
+  measure = "OR", model = "random"
+)
+
+summary(fit)
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
+Create publication-oriented outputs with the same fitted object:
 
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
+```{r forest, eval=FALSE}
+forest_meta(fit)
+table_meta(fit)
+plot_baujat(fit)
+publication_bias(fit, plot_method = "original")
 ```
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+## Analysis families
+
+- `meta_ratio()` analyses odds ratios, risk ratios, and pre-computed hazard ratios.
+- `meta_mean()` analyses mean differences and standardised mean differences.
+- `meta_prop()` analyses single proportions using logit or Freeman--Tukey transformations.
+- `meta_generic()` pools estimates supplied with standard errors, variances, or
+  confidence intervals.
+- `meta_cor()` pools correlations using Fisher's z transformation.
+- `meta_rate()` pools incidence rates from events and person-time.
+- `meta_reg()` supports continuous and categorical moderators, interactions,
+  Knapp--Hartung inference, predictions, and diagnostics.
+- `umbrella_review()` organises reported review-level results without calculating
+  a new pooled estimate across meta-analyses.
+
+The package includes a getting-started vignette, worked case studies, and a
+complete function reference. Run `browseVignettes("metapropul")` after
+installation or use the Articles and Reference sections of the pkgdown site.

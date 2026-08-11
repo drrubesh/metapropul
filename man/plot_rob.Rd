@@ -34,7 +34,9 @@ available.}
 when \code{tool = "Custom"}.}
 
 \item{colours}{Optional named character vector of colours when
-\code{tool = "Custom"}.}
+\code{tool = "Custom"}. If omitted, common judgements such as low, some
+concerns, and high receive semantic green, amber, and red colours;
+unrecognised levels receive a distinct qualitative palette.}
 
 \item{has_overall}{Logical; used only when \code{tool = "Custom"} to
 indicate whether an overall judgement is expected.}

@@ -17,7 +17,9 @@
 \code{"subgroup"}, \code{"influence"}, \code{"cumulative"}.}
 }
 \value{
-A list with \code{height}, \code{width}, and \code{fontsize}.
+A list with \code{height}, \code{width}, \code{fontsize}, and
+\code{spacing}. The spacing value compresses large viewer plots while
+exported devices still receive enough physical height for every row.
 }
 \description{
 Internal helper: Auto-adjust plot size for meta-analysis forest plots

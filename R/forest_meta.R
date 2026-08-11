@@ -1,15 +1,24 @@
 #' Forest plot for meta-analysis results
 #'
-#' Produces a publication-ready forest plot from a \code{meta_ratio},
-#' \code{meta_mean}, or \code{meta_prop} object. The appropriate plotting
+#' Produces a publication-ready forest plot from a supported metapropul
+#' meta-analysis object. The appropriate plotting
 #' method is selected automatically based on the class of \code{x}.
 #'
-#' @param x A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
-#'   object.
+#' @param x A supported metapropul meta-analysis object.
+#' @param title Optional plot title. No title is drawn when `NULL` (default).
 #' @param ... Additional arguments passed to the class-specific plotting
 #'   method.
 #'
 #' @return Invisibly returns \code{TRUE}.
+#'
+#' @details
+#' The class-specific method preserves the original fitted model, including
+#' subgroup estimates, tau-squared estimator, and random-effects confidence
+#' method. Plot width, height, font size, and row spacing are selected from the
+#' study count; plots with up to 200 studies are compressed automatically.
+#' Explicit \code{width} or \code{height} values supplied through \code{...}
+#' override the corresponding automatic decision. PDF export is recommended
+#' when individual study rows must remain readable at large study counts.
 #'
 #' @examples
 #' \donttest{
@@ -26,19 +35,66 @@
 #' @importFrom graphics mtext
 #' @importFrom stats update
 #' @export
-forest_meta <- function(x, ...) {
+forest_meta <- function(x, title = NULL, ...) {
   if (inherits(x, "meta_ratio")) {
-    forest_meta_ratio(x, ...)
+    forest_meta_ratio(x, title = title, ...)
   } else if (inherits(x, "meta_mean")) {
-    forest_meta_mean(x, ...)
+    forest_meta_mean(x, title = title, ...)
   } else if (inherits(x, "meta_prop")) {
-    forest_meta_prop(x, ...)
+    forest_meta_prop(x, title = title, ...)
+  } else if (inherits(x, c("meta_generic", "meta_cor", "meta_rate"))) {
+    .forest_meta_additional(x, title = title, ...)
   } else {
     stop(
-      "'x' must be a meta_ratio, meta_mean, or meta_prop object.",
+      "'x' must be a supported metapropul meta-analysis object.",
       call. = FALSE
     )
   }
+}
+
+#' @keywords internal
+.forest_meta_additional <- function(x, title = NULL,
+                                    save_as = c("viewer", "pdf", "png", "tiff"),
+                                    filename = NULL, width = NULL, height = NULL,
+                                    ...) {
+  save_as <- match.arg(save_as)
+  k <- x$meta$k
+  has_subgroup <- isTRUE(x$subgroup)
+  sizing <- .auto_plot_sizing(k, width = width, height = height,
+    type = if (has_subgroup) "subgroup" else "ratio")
+  if (is.null(filename) && save_as != "viewer") filename <- .forest_filename(save_as)
+  if (save_as != "viewer") .forest_open(save_as, filename, sizing$width, sizing$height)
+  on.exit(if (save_as != "viewer") {
+    grDevices::dev.off()
+    .forest_close(save_as, filename, k)
+  }, add = TRUE)
+  weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+  leftcols <- "studlab"
+  leftlabs <- "Study"
+  if (inherits(x, "meta_cor") && "n" %in% names(x$meta)) {
+    leftcols <- c("studlab", "n")
+    leftlabs <- c("Study", "Total")
+  } else if (inherits(x, "meta_rate") &&
+      all(c("event", "time") %in% names(x$meta))) {
+    leftcols <- c("studlab", "event", "time")
+    leftlabs <- c("Study", "Events", "Person-time")
+  }
+  forest_args <- list(
+    x = x$meta, leftcols = leftcols, leftlabs = leftlabs,
+    rightcols = c("effect", "ci", weight_col),
+    rightlabs = c(x$measure, "95% CI", "Weight"),
+    layout = "meta", prediction = identical(x$model, "random"),
+    print.I2 = TRUE, print.tau2 = TRUE, print.Q = TRUE,
+    fontsize = sizing$fontsize,
+    spacing = if (save_as == "viewer") sizing$spacing else 1,
+    addrows.below.overall = .forest_bottom_rows(k, has_subgroup)
+  )
+  do.call(meta::forest, c(forest_args, list(...)))
+  .forest_add_title(title)
+  if (save_as == "viewer") {
+    message("Forest plot displayed in Viewer. Use save_as = 'pdf', 'png', or 'tiff' to export.")
+  }
+  invisible(TRUE)
 }
 
 # -- internal helpers ------------------------------------------------------
@@ -123,44 +179,30 @@ forest_meta <- function(x, ...) {
   }
 }
 
-.forest_auto_title <- function(measure, k) {
-  measure_str <- switch(
-    measure,
-    OR = "Odds Ratio",
-    RR = "Risk Ratio",
-    HR = "Hazard Ratio",
-    MD = "Mean Difference",
-    SMD = "Standardised Mean Difference",
-    Proportion = "Proportion",
-    measure
-  )
-
-  sprintf("Forest plot - %s (k = %d)", measure_str, k)
-}
-
 .forest_add_title <- function(title) {
   if (!is.null(title) && nzchar(title)) {
-    tryCatch(
-      graphics::mtext(title, side = 3, line = 1, font = 2, cex = 0.95),
-      error = function(e) invisible(NULL)
+    grid::grid.text(
+      title,
+      x = grid::unit(0.5, "npc"),
+      y = grid::unit(0.99, "npc"),
+      gp = grid::gpar(fontface = "bold", fontsize = 11)
     )
   }
 }
 
 .forest_bottom_rows <- function(k, has_subgroup = FALSE) {
   if (has_subgroup) {
-    return(2L)
+    # meta::forest already allocates the axis and subgroup-test rows. Two
+    # additional rows keep the overall statistics clear without creating a
+    # conspicuous gap below the axis.
+    return(3L)
   }
 
   if (k <= 10) {
     return(2L)
   }
 
-  if (k <= 20) {
-    return(3L)
-  }
-
-  1L
+  3L
 }
 
 # --- ROB helpers ----------------------------------------------------------
@@ -238,7 +280,7 @@ forest_meta <- function(x, ...) {
         message(sprintf(
           paste0(
             "Note: Layout switched from '%s' to 'meta' for ",
-            "k = %d > 30 (metagen path)."
+                "k = %d > 30."
           ),
           layout,
           k
@@ -271,7 +313,7 @@ forest_meta_ratio <- function(x,
                               title = NULL,
                               filename = NULL,
                               save_as = c("viewer", "pdf", "png", "tiff"),
-                              layout = "RevMan5",
+                              layout = "meta",
                               height = NULL,
                               width = NULL,
                               rob_data = NULL,
@@ -316,6 +358,7 @@ forest_meta_ratio <- function(x,
   height <- sizing$height
   width <- sizing$width
   fontsize <- sizing$fontsize
+  spacing <- if (save_as == "viewer") sizing$spacing else 1
   bottom_rows <- .forest_bottom_rows(k, has_subgroup)
 
   if (has_rob && is.null(match.call()$width)) {
@@ -355,86 +398,34 @@ forest_meta_ratio <- function(x,
   )
 
   effective_layout <- .resolve_layout(layout, k, type = "ratio")
-  plot_title <- if (is.null(title)) {
-    .forest_auto_title(x$measure, k)
+  plot_title <- title
+
+  plot_obj <- m
+
+  if (has_rob) {
+    plot_obj$data <- rob_df
+    weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+    rightcols <- c("effect", "ci", weight_col, "rob_text")
+    rightlabs <- c(or_label, "95% CI", "Weight", rob_colname)
   } else {
-    title
+    weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+    rightcols <- c("effect", "ci", weight_col)
+    rightlabs <- c(or_label, "95% CI", "Weight")
   }
 
-  if (k > 30) {
-    plot_obj <- suppressWarnings(meta::metagen(
-      TE = m$TE,
-      seTE = m$seTE,
-      studlab = m$studlab,
-      sm = m$sm,
-      common = m$common,
-      random = m$random,
-      prediction = TRUE,
-      tau.preset = sqrt(m$tau2),
-      subgroup = byvar
-    ))
-
-    if (has_rob) {
-      plot_obj$data <- rob_df
-      rightcols <- c("effect", "ci", "w.random", "rob_text")
-      rightlabs <- c(or_label, "95%-CI", "Weight", rob_colname)
-    } else {
-      rightcols <- FALSE
-      rightlabs <- NULL
-    }
-
-    class(plot_obj) <- c("metagen", "meta")
-
-    bare_args <- list(
-      x = plot_obj,
-      sortvar = plot_obj$TE,
-      smlab = or_label,
-      leftcols = "studlab",
-      leftlabs = "Study",
-      rightcols = rightcols,
-      rightlabs = rightlabs,
-      backtransf = TRUE,
-      text.random = "Total (95% CI)",
-      text.common = "Total (95% CI)",
-      refline = 1,
-      layout = effective_layout,
-      prediction = TRUE,
-      print.pred = TRUE,
-      print.I2 = TRUE,
-      print.tau2 = TRUE,
-      print.Q = TRUE,
-      fontsize = fontsize,
-      fs.hetstat = max(6, fontsize - 2),
-      col.square = "blue",
-      col.square.lines = "blue",
-      col.diamond = "blue",
-      col.diamond.lines = "blue",
-      col.predict = "darkgreen",
-      addrows.below.left = if (has_subgroup) 0L else 1L,
-      addrows.below.overall = bottom_rows
-    )
-
-    if (has_subgroup) {
-      bare_args$subgroup.name <- "Subgroup"
-    }
-
-    do.call(meta::forest, c(bare_args, list(...)))
+  ratio_leftcols <- if (identical(x$settings$input, "raw")) {
+    c("studlab", "event.e", "n.e", "event.c", "n.c")
   } else {
-    plot_obj <- m
+    "studlab"
+  }
+  ratio_leftlabs <- if (length(ratio_leftcols) == 1L) "Study" else
+    c("Study", "Events", "Total", "Events", "Total")
 
-    if (has_rob) {
-      plot_obj$data <- rob_df
-      rightcols <- c("effect", "ci", "w.random", "rob_text")
-      rightlabs <- c("OR", "95%-CI", "Weight", rob_colname)
-    } else {
-      rightcols <- FALSE
-      rightlabs <- NULL
-    }
-
-    forest_args <- list(
+  forest_args <- list(
       x = plot_obj,
       sortvar = m$TE,
-      leftlabs = "Study",
+      leftcols = ratio_leftcols,
+      leftlabs = ratio_leftlabs,
       label.e = "Exp",
       label.c = "Ctrl",
       rightcols = rightcols,
@@ -450,6 +441,7 @@ forest_meta_ratio <- function(x,
       print.Q = TRUE,
       smlab = or_label,
       fontsize = fontsize,
+      spacing = spacing,
       fs.hetstat = max(6, fontsize - 2),
       addrows.below.left = if (has_subgroup) 0L else 1L,
       addrows.below.overall = bottom_rows,
@@ -461,18 +453,17 @@ forest_meta_ratio <- function(x,
       layout = effective_layout,
       refline = 1,
       logscale = TRUE
+  )
+
+  if (has_subgroup) {
+    forest_args$x <- update(
+      forest_args$x,
+      subgroup = byvar,
+      subgroup.name = "Subgroup"
     )
-
-    if (has_subgroup) {
-      forest_args$x <- update(
-        forest_args$x,
-        subgroup = byvar,
-        subgroup.name = "Subgroup"
-      )
-    }
-
-    do.call(meta::forest, c(forest_args, list(...)))
   }
+
+  do.call(meta::forest, c(forest_args, list(...)))
 
   .forest_add_title(plot_title)
   if (has_rob && rob_style == "short") {
@@ -495,7 +486,7 @@ forest_meta_mean <- function(x,
                              title = NULL,
                              filename = NULL,
                              save_as = c("viewer", "pdf", "png", "tiff"),
-                             layout = "RevMan5",
+                             layout = "meta",
                              height = NULL,
                              width = NULL,
                              rob_data = NULL,
@@ -541,6 +532,7 @@ forest_meta_mean <- function(x,
   height <- sizing$height
   width <- sizing$width
   fontsize <- sizing$fontsize
+  spacing <- if (save_as == "viewer") sizing$spacing else 1
   bottom_rows <- .forest_bottom_rows(k, has_subgroup)
 
   if (has_rob && is.null(match.call()$width)) {
@@ -582,27 +574,34 @@ forest_meta_mean <- function(x,
   }
 
   effective_layout <- .resolve_layout(layout, k, type = "mean")
-  plot_title <- if (is.null(title)) {
-    .forest_auto_title(x$measure, k)
-  } else {
-    title
-  }
+  plot_title <- title
 
   plot_obj <- m
 
   if (has_rob) {
     plot_obj$data <- rob_df
-    rightcols <- c("effect", "ci", "w.random", "rob_text")
-    rightlabs <- c("Estimate", "95%-CI", "Weight", rob_colname)
+    weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+    rightcols <- c("effect", "ci", weight_col, "rob_text")
+    rightlabs <- c(smlab, "95% CI", "Weight", rob_colname)
   } else {
-    rightcols <- FALSE
-    rightlabs <- NULL
+    weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+    rightcols <- c("effect", "ci", weight_col)
+    rightlabs <- c(smlab, "95% CI", "Weight")
   }
+
+  mean_leftcols <- if (identical(x$settings$input, "raw")) {
+    c("studlab", "n.e", "mean.e", "sd.e", "n.c", "mean.c", "sd.c")
+  } else {
+    "studlab"
+  }
+  mean_leftlabs <- if (length(mean_leftcols) == 1L) "Study" else
+    c("Study", "Total", "Mean", "SD", "Total", "Mean", "SD")
 
   mean_args <- list(
     x = plot_obj,
     sortvar = m$TE,
-    leftlabs = c("Study", "N (Exp/Ctrl)"),
+    leftcols = mean_leftcols,
+    leftlabs = mean_leftlabs,
     rightcols = rightcols,
     rightlabs = rightlabs,
     print.w = TRUE,
@@ -617,6 +616,7 @@ forest_meta_mean <- function(x,
     print.Q = TRUE,
     smlab = smlab,
     fontsize = fontsize,
+    spacing = spacing,
     fs.hetstat = max(6, fontsize - 2),
     addrows.below.left = if (has_subgroup) 0L else 1L,
     addrows.below.overall = bottom_rows,
@@ -660,7 +660,7 @@ forest_meta_prop <- function(x,
                              title = NULL,
                              filename = NULL,
                              save_as = c("viewer", "pdf", "png", "tiff"),
-                             layout = "RevMan5",
+                             layout = "meta",
                              height = NULL,
                              width = NULL,
                              rob_data = NULL,
@@ -705,6 +705,7 @@ forest_meta_prop <- function(x,
   height <- sizing$height
   width <- sizing$width
   fontsize <- sizing$fontsize
+  spacing <- if (save_as == "viewer") sizing$spacing else 1
   bottom_rows <- .forest_bottom_rows(k, has_subgroup)
 
   if (has_rob && is.null(match.call()$width)) {
@@ -735,21 +736,20 @@ forest_meta_prop <- function(x,
     on.exit(grDevices::dev.off(), add = TRUE)
   }
 
-  upper_ci_max <- max(m$upper, na.rm = TRUE) * 100
+  # The meta object stores limits on the transformed scale (for example,
+  # logits). Back-transform before deriving a percentage axis; otherwise
+  # boundary studies can yield an infinite viewport scale.
+  upper_ci_max <- max(.backtransform_prop(m$upper, m$sm), na.rm = TRUE) * 100
   predict_upper <- if (!is.null(m$upper.predict)) {
-    max(m$upper.predict, na.rm = TRUE) * 100
+    max(.backtransform_prop(m$upper.predict, m$sm), na.rm = TRUE) * 100
   } else {
     0
   }
 
   xlim_max <- ceiling(max(upper_ci_max, predict_upper) / 5) * 5
-  xlim_max <- max(xlim_max, 10)
+  xlim_max <- min(100, max(xlim_max, 10))
 
-  plot_title <- if (is.null(title)) {
-    .forest_auto_title("Proportion", k)
-  } else {
-    title
-  }
+  plot_title <- title
 
   plot_obj <- m
 
@@ -759,11 +759,13 @@ forest_meta_prop <- function(x,
 
   if (has_rob) {
     plot_obj$data <- rob_df
-    rightcols <- c("effect", "ci", "w.random", "rob_text")
-    rightlabs <- c("Proportion (%)", "95%-CI", "Weight", rob_colname)
+    weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+    rightcols <- c("effect", "ci", weight_col, "rob_text")
+    rightlabs <- c("Proportion", "95% CI", "Weight", rob_colname)
   } else {
-    rightcols <- FALSE
-    rightlabs <- NULL
+    weight_col <- if (identical(x$model, "fixed")) "w.common" else "w.random"
+    rightcols <- c("effect", "ci", weight_col)
+    rightlabs <- c("Proportion", "95% CI", "Weight")
   }
 
   prop_args <- list(
@@ -789,6 +791,7 @@ forest_meta_prop <- function(x,
     pscale = 100,
     squaresize = 0.5,
     fontsize = fontsize,
+    spacing = spacing,
     fs.hetstat = max(6, fontsize - 2),
     addrows.below.left = if (has_subgroup) 0L else 1L,
     addrows.below.overall = bottom_rows,

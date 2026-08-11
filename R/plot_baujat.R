@@ -113,7 +113,7 @@ plot_baujat <- function(object,
   on.exit(options(scipen = old_scipen), add = TRUE)
   options(scipen = 999)
 
-  plot_title <- if (is.null(title)) "Baujat Plot" else title
+  plot_title <- title
 
   graphics::plot(
     x_vals, y_vals,

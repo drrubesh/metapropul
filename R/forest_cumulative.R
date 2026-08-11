@@ -14,9 +14,8 @@
 #'
 #' @param object A \code{meta_ratio}, \code{meta_mean}, or \code{meta_prop}
 #'   object.
-#' @param title Optional character string printed above the plot. If
-#'   \code{NULL} (default), an auto-constructed title is used. Set to
-#'   \code{""} to suppress.
+#' @param title Optional character string printed above the plot. No title is
+#'   drawn when `NULL` (the default).
 #' @param save_as One of \code{"viewer"} (default), \code{"pdf"},
 #'   \code{"png"}, or \code{"tiff"}.
 #' @param filename Optional file path. If \code{NULL} and
@@ -25,6 +24,9 @@
 #' @param layout Forest plot layout passed to \code{meta::forest()}. One of
 #'   \code{"RevMan5"} (default), \code{"JAMA"}, \code{"BMJ"}, or
 #'   \code{"meta"}.
+#' @param prediction Logical; show a prediction interval (default \code{FALSE}).
+#' @param overall Logical; show the overall cumulative estimate (default
+#'   \code{TRUE}).
 #' @param width Optional plot width in inches (overrides auto-sizing).
 #' @param height Optional plot height in inches (overrides auto-sizing).
 #' @param ... Additional arguments passed to \code{meta::forest()}.
@@ -100,14 +102,7 @@ forest_cumulative <- function(object,
 
   # -- Plot ---------------------------------------------------------------------
   is_prop <- inherits(object, "meta_prop")
-  plot_title <- if (is.null(title)) {
-    sprintf(
-      "Cumulative meta-analysis - %s (k\u00a0=\u00a0%d)",
-      object$measure, k
-    )
-  } else {
-    title
-  }
+  plot_title <- title
 
   forest_args <- list(
     x          = cum_obj,

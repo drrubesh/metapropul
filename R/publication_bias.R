@@ -47,9 +47,10 @@ publication_bias <- function(object,
                              height = 8) {
   save_as <- match.arg(save_as)
 
-  if (!inherits(object, c("meta_prop", "meta_ratio", "meta_mean"))) {
+  if (!inherits(object, c("meta_prop", "meta_ratio", "meta_mean",
+      "meta_generic", "meta_cor", "meta_rate"))) {
     stop(
-      "object must be from meta_prop(), meta_ratio(), or meta_mean().",
+      "object must be from a supported metapropul meta-analysis.",
       call. = FALSE
     )
   }
@@ -83,33 +84,36 @@ publication_bias <- function(object,
     stop("Could not determine the number of studies in object$meta.", call. = FALSE)
   }
 
+  results <- list()
+  failures <- list()
+  safely <- function(name, expression) tryCatch(expression, error = function(e) {
+    failures[[name]] <<- conditionMessage(e)
+    NULL
+  })
+
   if (k < 10) {
     message("Publication bias tests are not recommended when k < 10 studies.")
-    message("Consider using doi_plot() for smaller meta-analyses.")
-    return(invisible(NULL))
+    message("Descriptive funnel plots remain available; consider doi_plot() as an additional sensitivity display.")
+    begg <- egger <- NULL
+    failures$Begg <- failures$Egger <-
+      "Not run: fewer than 10 studies"
+  } else {
+    begg <- safely("Begg", meta::metabias(meta_obj, method.bias = "rank"))
+    egger <- safely("Egger", meta::metabias(meta_obj, method.bias = "linreg"))
   }
-
-  results <- list()
-
-  begg <- tryCatch(
-    meta::metabias(meta_obj, method.bias = "rank"),
-    error = function(e) NULL
-  )
-
-  egger <- tryCatch(
-    meta::metabias(meta_obj, method.bias = "linreg"),
-    error = function(e) NULL
-  )
 
   results$begg <- begg
   results$egger <- egger
 
   if (!is.null(egger)) {
-    egger_z <- egger$statistic
-    egger_p <- egger$p.value
-    egger_int <- tryCatch(egger$estimate[1], error = function(e) NA_real_)
+    egger_z <- as.numeric(egger$statistic)[1]
+    egger_p <- if (!is.null(egger$p.value)) egger$p.value else egger$pval
+    egger_p <- as.numeric(egger_p)[1]
+    egger_int <- tryCatch(as.numeric(egger$estimate)[1], error = function(e) NA_real_)
 
-    egger_interp <- if (egger_p < 0.05) {
+    egger_interp <- if (!is.finite(egger_p)) {
+      "test p-value unavailable"
+    } else if (egger_p < 0.05) {
       "suggests possible bias or small-study effects"
     } else if (egger_p < 0.10) {
       "borderline; interpret cautiously"
@@ -117,10 +121,14 @@ publication_bias <- function(object,
       "no evidence of asymmetry detected"
     }
 
-    message(sprintf(
-      "Egger's test: z = %.2f, p = %.4f, intercept = %.3f -- %s",
-      egger_z, egger_p, egger_int, egger_interp
-    ))
+    if (is.finite(egger_z) && is.finite(egger_p)) {
+      message(sprintf(
+        "Egger's test: z = %.2f, p = %.4f, intercept = %.3f -- %s",
+        egger_z, egger_p, egger_int, egger_interp
+      ))
+    } else {
+      message("Egger's test result unavailable for this fitted model.")
+    }
 
     if (is_prop) {
       message("Note: Egger's test was run on the logit-transformed scale for proportion data.")
@@ -128,10 +136,13 @@ publication_bias <- function(object,
   }
 
   if (!is.null(begg)) {
-    begg_z <- begg$statistic
-    begg_p <- begg$p.value
+    begg_z <- as.numeric(begg$statistic)[1]
+    begg_p <- if (!is.null(begg$p.value)) begg$p.value else begg$pval
+    begg_p <- as.numeric(begg_p)[1]
 
-    begg_interp <- if (begg_p < 0.05) {
+    begg_interp <- if (!is.finite(begg_p)) {
+      "test p-value unavailable"
+    } else if (begg_p < 0.05) {
       "suggests rank asymmetry in the funnel plot"
     } else if (begg_p < 0.10) {
       "borderline; interpret cautiously"
@@ -139,16 +150,20 @@ publication_bias <- function(object,
       "no evidence of rank asymmetry detected"
     }
 
-    message(sprintf(
-      "Begg's test (rank correlation): z = %.2f, p = %.4f -- %s",
-      begg_z, begg_p, begg_interp
-    ))
+    if (is.finite(begg_z) && is.finite(begg_p)) {
+      message(sprintf(
+        "Begg's test (rank correlation): z = %.2f, p = %.4f -- %s",
+        begg_z, begg_p, begg_interp
+      ))
+    } else {
+      message("Begg's test result unavailable for this fitted model.")
+    }
   }
 
-  tf <- tryCatch(
-    meta::trimfill(meta_obj),
-    error = function(e) NULL
-  )
+  tf <- if (k < 10) {
+    failures$TrimFill <- "Not run: fewer than 10 studies"
+    NULL
+  } else safely("TrimFill", meta::trimfill(meta_obj))
 
   if (!is.null(tf)) {
     results$trimfill <- tf
@@ -275,11 +290,12 @@ publication_bias <- function(object,
     }
 
     graphics::par(mfrow = mfrow, oma = if (!is.null(title) && nzchar(title) && n_plots > 1L) c(0, 0, 3, 0) else c(0, 0, 0, 0))
+    panel_title <- if (n_plots == 1L && !is.null(title) && nzchar(title)) title else ""
 
     for (pm in plot_method) {
       if (identical(pm, "original")) {
         tryCatch(
-          meta::funnel(meta_obj, main = "Funnel Plot"),
+          meta::funnel(meta_obj, main = panel_title),
           error = function(e) message("Could not plot original funnel plot: ", e$message)
         )
       }
@@ -287,7 +303,7 @@ publication_bias <- function(object,
       if (identical(pm, "trimfill")) {
         if (!is.null(tf)) {
           tryCatch(
-            meta::funnel(tf, main = "Trim-and-Fill Funnel"),
+            meta::funnel(tf, main = panel_title),
             error = function(e) message("Could not plot trim-and-fill funnel plot: ", e$message)
           )
         }
@@ -303,7 +319,7 @@ publication_bias <- function(object,
           tryCatch(
             metafor::funnel(
               rma_obj,
-              main = "Contour-Enhanced Funnel Plot",
+              main = panel_title,
               level = c(90, 95, 99),
               shade = c("white", "gray85", "gray70"),
               refline = 0,
@@ -331,7 +347,7 @@ publication_bias <- function(object,
             metasens::funnel.limitmeta(
               lm_obj,
               backtransf = TRUE,
-              main = "Limit Meta-Analysis"
+              main = panel_title
             ),
             error = function(e) {
               message("Could not plot limit meta-analysis funnel plot: ", e$message)
@@ -358,5 +374,16 @@ publication_bias <- function(object,
     }
   }
 
+  method_names <- c("Egger", "Begg", "TrimFill")
+  values <- list(Egger = egger, Begg = begg, TrimFill = tf)
+  results$status <- tibble::tibble(
+    Method = method_names,
+    Available = vapply(values, Negate(is.null), logical(1)),
+    Reason = vapply(method_names, function(name) {
+      value <- failures[[name]]
+      if (is.null(value)) NA_character_ else value
+    }, character(1))
+  )
+  class(results) <- c("publication_bias_result", "list")
   invisible(results)
 }
